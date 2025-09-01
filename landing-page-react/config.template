@@ -1,0 +1,19 @@
+# Copy this file to .env and update the values
+
+# Port Configuration (Frontend runs on 3002, Backend on 3001)
+PORT=3002
+
+# API Configuration
+REACT_APP_API_URL=http://localhost:3001/api
+
+# Google OAuth
+REACT_APP_GOOGLE_CLIENT_ID=837073239595-d82jmt90dcg6pg1suilajc7rl2auf2b8.apps.googleusercontent.com
+
+# Razorpay
+REACT_APP_RAZORPAY_KEY=rzp_test_your_key_here
+
+# Environment
+REACT_APP_ENV=development
+
+# Optional: Analytics
+REACT_APP_GA_TRACKING_ID=G-XXXXXXXXXX

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Summarizer</title>
+  <link rel="stylesheet" href="popup-new.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="brand">
+        <span class="brand-icon">🎥</span>
+        <div class="brand-info">
+          <h1>YouTube Summarizer</h1>
+          <p>AI-powered summaries</p>
+        </div>
+      </div>
+      
+
+    </div>
+
+    <!-- User Section -->
+    <div class="user-section" id="user-section">
+      <!-- Not Signed In -->
+      <div id="not-signed-in" class="auth-state">
+        <div class="auth-icon">🔐</div>
+        <h3>Sign In Required</h3>
+        <p>Connect to your secure AI backend</p>
+        <button class="primary-btn" onclick="openAuthPage()">
+          <span class="btn-icon">🚀</span>
+          Sign In with Google
+        </button>
+      </div>
+
+      <!-- Signed In - Free Plan -->
+      <div id="signed-in-free" class="auth-state" style="display: none;">
+        <div class="user-info">
+          <img id="user-avatar-free" src="" alt="Profile" class="user-avatar">
+          <div class="user-details">
+            <div id="user-name-free" class="user-name"></div>
+            <div class="plan-badge free-badge">Free Plan</div>
+          </div>
+        </div>
+        
+        <div class="plan-limits">
+          <div class="limit-item">
+            <span class="limit-label">Monthly summaries:</span>
+            <span id="usage-count" class="limit-value">0 / 5</span>
+          </div>
+          <div class="progress-bar">
+            <div id="usage-progress" class="progress-fill"></div>
+          </div>
+        </div>
+        
+        <button class="upgrade-btn" onclick="openPricingPage()">
+          <span class="btn-icon">⭐</span>
+          Upgrade to Premium
+          <span class="btn-price">$10/month</span>
+        </button>
+        
+        <div class="premium-features">
+          <div class="feature-item">✅ Unlimited summaries</div>
+          <div class="feature-item">✅ Advanced AI insights</div>
+          <div class="feature-item">✅ Interactive chat</div>
+        </div>
+      </div>
+
+      <!-- Signed In - Premium Plan -->
+      <div id="signed-in-premium" class="auth-state" style="display: none;">
+        <div class="user-info">
+          <img id="user-avatar-premium" src="" alt="Profile" class="user-avatar">
+          <div class="user-details">
+            <div id="user-name-premium" class="user-name"></div>
+            <div class="plan-badge premium-badge">Premium</div>
+          </div>
+        </div>
+        
+        <div class="plan-status">
+          <div class="status-item">
+            <span class="status-icon">✅</span>
+            <span class="status-text">Active subscription</span>
+          </div>
+          <div class="status-item">
+            <span class="status-icon">📅</span>
+            <span id="next-billing" class="status-text">Next billing: Loading...</span>
+          </div>
+        </div>
+        
+        <div class="premium-stats">
+          <div class="stat-item">
+            <div id="summaries-count" class="stat-number">0</div>
+            <div class="stat-label">Summaries this month</div>
+          </div>
+          <div class="stat-item">
+            <div id="cost-saved" class="stat-number">₹0</div>
+            <div class="stat-label">Time saved</div>
+          </div>
+        </div>
+        
+        <button class="secondary-btn" onclick="openPricingPage()">
+          <span class="btn-icon">⚙️</span>
+          Manage Subscription
+        </button>
+      </div>
+
+
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions" id="quick-actions" style="display: none;">
+      <h4>Quick Actions</h4>
+      <div class="action-buttons">
+        <button class="action-btn" onclick="getCurrentVideoSummary()">
+          <span class="btn-icon">📝</span>
+          Summarize Current Video
+        </button>
+        <button class="action-btn" onclick="openLandingPage()">
+          <span class="btn-icon">🌐</span>
+          Open Dashboard
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-links">
+        <a href="#" onclick="openPricingPage()">Pricing</a>
+        <a href="#" onclick="openSupportPage()">Support</a>
+        <a href="#" onclick="openAboutPage()">About</a>
+      </div>
+      <small>Made with ❤️ for better YouTube experience</small>
+    </div>
+  </div>
+
+  <script src="popup-new.js"></script>
+</body>
+</html>

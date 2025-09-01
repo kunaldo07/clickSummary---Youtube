@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Summarizer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <div class="header">
+      <h1>📝 YouTube Summarizer</h1>
+      <p>AI-powered video summaries</p>
+    </div>
+
+    <div class="content">
+      <div class="section">
+        <label for="api-key">OpenAI API Key:</label>
+        <div class="input-group">
+          <input 
+            type="password" 
+            id="api-key" 
+            placeholder="sk-..." 
+            autocomplete="off"
+          >
+          <button id="toggle-visibility" type="button" title="Show/Hide API Key">👁️</button>
+        </div>
+        <small class="help-text">
+          Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>
+        </small>
+      </div>
+
+      <div class="section">
+        <button id="save-settings" class="primary-btn">Save Settings</button>
+      </div>
+
+      <div class="section">
+        <div class="status-indicator">
+          <span id="status-icon">⚪</span>
+          <span id="status-text">Not configured</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>How to use:</h3>
+        <ol class="instructions">
+          <li>Enter your OpenAI API key above</li>
+          <li>Navigate to any YouTube video</li>
+          <li>The extension will automatically extract the transcript</li>
+          <li>AI summary will appear below the video</li>
+        </ol>
+      </div>
+
+      <div class="section">
+        <details class="faq">
+          <summary>❓ Troubleshooting</summary>
+          <div class="faq-content">
+            <p><strong>No summary showing?</strong></p>
+            <ul>
+              <li>Make sure the video has captions/transcript available</li>
+              <li>Check your API key is correct</li>
+              <li>Refresh the YouTube page</li>
+            </ul>
+            
+            <p><strong>API costs:</strong></p>
+            <ul>
+              <li>Uses GPT-5 nano (~$0.0001 per summary)</li>
+              <li>Summaries are cached for 24 hours</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="footer">
+      <small>Made with ❤️ for better YouTube experience</small>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

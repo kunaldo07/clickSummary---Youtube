@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Video Summarizer",
+  "version": "1.0.0",
+  "description": "Extract transcripts from YouTube videos and generate AI-powered summaries",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://api.openai.com/*",
+    "http://localhost:3001/*",
+    "http://localhost:3002/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/watch*"],
+      "js": ["content.js"],
+      "css": ["styles-exact.css"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": ["http://localhost:3002/*"],
+      "js": ["auth-bridge.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "YouTube Summarizer - Ready to use!",
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "icon16.svg",
+    "48": "icon48.svg",
+    "128": "icon128.svg"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["auth-bridge.html"],
+      "matches": ["https://www.youtube.com/*"]
+    }
+  ]
+}

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔄 Authentication Sync Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .test-step {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 5px solid #00ff88;
+        }
+        .test-step h3 {
+            margin-top: 0;
+            color: #00ff88;
+        }
+        .status-check {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+        .success { background: #00ff88; }
+        .error { background: #ff4757; }
+        .pending { background: #ffa502; }
+        button {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        button:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        .result {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .console-output {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .instructions {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px dashed rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <h1>🔄 Authentication Sync Test</h1>
+    
+    <div class="container">
+        <h2>📋 Test Instructions</h2>
+        <div class="instructions">
+            <p><strong>Follow these steps to test authentication sharing:</strong></p>
+            <ol>
+                <li>Make sure you're on the landing page (<code>localhost:3002</code>)</li>
+                <li>Open this test page in a separate tab</li>
+                <li>Follow the test steps below</li>
+                <li>Check that all status indicators turn green ✅</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Authentication Sync Tests</h2>
+        
+        <div class="test-step">
+            <h3>Step 1: Check Current Auth State</h3>
+            <div id="auth-state">
+                <div class="status-check">
+                    <div class="status-indicator pending" id="webapp-status">?</div>
+                    <span>Web App Authentication</span>
+                </div>
+                <div class="status-check">
+                    <div class="status-indicator pending" id="bridge-status">?</div>
+                    <span>Auth Bridge Status</span>
+                </div>
+                <div class="status-check">
+                    <div class="status-indicator pending" id="extension-status">?</div>
+                    <span>Extension Communication</span>
+                </div>
+            </div>
+            <button onclick="checkAuthState()">🔍 Check Auth State</button>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 2: Test Extension Popup</h3>
+            <p>While signed in to the landing page:</p>
+            <ol>
+                <li>Click your Chrome extension icon</li>
+                <li>Extension popup should show your profile picture and name</li>
+                <li>Should show "Go to Website" button</li>
+                <li>Should show your plan details</li>
+            </ol>
+            <div id="popup-test-result" class="result"></div>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 3: Test Real-Time Sync</h3>
+            <button onclick="testSignOut()">🚪 Test Sign Out</button>
+            <button onclick="testSignIn()">🔐 Test Sign In</button>
+            <div id="sync-test-result" class="result"></div>
+            <p><em>After clicking these buttons, check your extension popup to see if it updates in real-time</em></p>
+        </div>
+
+        <div class="test-step">
+            <h3>Step 4: Test YouTube Functionality</h3>
+            <ol>
+                <li>Go to any YouTube video while signed in</li>
+                <li>Click your extension to generate a summary</li>
+                <li>Should work without asking you to sign in again</li>
+            </ol>
+            <button onclick="openYouTubeTest()">🎬 Open Test YouTube Video</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Live Console Output</h2>
+        <div class="console-output" id="console-output">
+            Waiting for test execution...\n
+        </div>
+        <button onclick="clearConsole()">🧹 Clear Console</button>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const console = document.getElementById('console-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+            console.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function updateStatus(elementId, success) {
+            const element = document.getElementById(elementId);
+            element.className = `status-indicator ${success ? 'success' : 'error'}`;
+            element.textContent = success ? '✅' : '❌';
+        }
+
+        function checkAuthState() {
+            log('🔍 Checking authentication state...', 'info');
+            
+            // Check localStorage
+            const token = localStorage.getItem('youtube_summarizer_token');
+            const user = localStorage.getItem('youtube_summarizer_user');
+            const hasAuth = !!(token && user);
+            
+            updateStatus('webapp-status', hasAuth);
+            log(`Web app auth: ${hasAuth ? 'Authenticated' : 'Not authenticated'}`, hasAuth ? 'success' : 'error');
+            
+            // Check auth bridge
+            const hasBridge = !!window.youTubeSummarizerAuthBridge;
+            updateStatus('bridge-status', hasBridge);
+            log(`Auth bridge: ${hasBridge ? 'Available' : 'Not available'}`, hasBridge ? 'success' : 'error');
+            
+            // Test extension communication
+            if (hasBridge) {
+                try {
+                    const bridgeStatus = window.youTubeSummarizerAuthBridge.getStatus();
+                    updateStatus('extension-status', true);
+                    log(`Extension communication: Active (${JSON.stringify(bridgeStatus)})`, 'success');
+                } catch (error) {
+                    updateStatus('extension-status', false);
+                    log(`Extension communication error: ${error.message}`, 'error');
+                }
+            } else {
+                updateStatus('extension-status', false);
+                log('Extension communication: Auth bridge not available', 'error');
+            }
+
+            if (hasAuth && user) {
+                try {
+                    const userData = JSON.parse(user);
+                    log(`Authenticated as: ${userData.name} (${userData.email})`, 'success');
+                    log(`Plan: ${userData.subscription?.plan || 'unknown'}`, 'info');
+                } catch (e) {
+                    log('Error parsing user data', 'error');
+                }
+            }
+        }
+
+        function testSignOut() {
+            log('🚪 Testing sign out...', 'info');
+            
+            // Clear localStorage to simulate sign out
+            localStorage.removeItem('youtube_summarizer_token');
+            localStorage.removeItem('youtube_summarizer_user');
+            
+            log('✅ Signed out from web app', 'success');
+            log('🔄 Triggering auth bridge sync...', 'info');
+            
+            // Trigger auth bridge sync
+            if (window.youTubeSummarizerAuthBridge) {
+                window.youTubeSummarizerAuthBridge.forceSync();
+                log('✅ Auth bridge sync triggered', 'success');
+            } else {
+                log('❌ Auth bridge not available', 'error');
+            }
+            
+            // Update UI
+            setTimeout(() => {
+                checkAuthState();
+                document.getElementById('sync-test-result').innerHTML = 
+                    '<div class="result" style="background: rgba(255,71,87,0.2); color: #ff4757;">🚪 Signed out - Check extension popup for updates</div>';
+            }, 1000);
+        }
+
+        function testSignIn() {
+            log('🔐 Testing sign in...', 'info');
+            
+            // Simulate sign in with test data
+            const testUser = {
+                id: 'test-sync-user',
+                name: 'Test Sync User',
+                email: 'test@sync.com',
+                picture: 'https://via.placeholder.com/64',
+                role: 'user',
+                subscription: { plan: 'free', status: 'active' },
+                backendToken: 'test-sync-token-' + Date.now()
+            };
+            
+            localStorage.setItem('youtube_summarizer_token', testUser.backendToken);
+            localStorage.setItem('youtube_summarizer_user', JSON.stringify(testUser));
+            
+            log('✅ Test user signed in to web app', 'success');
+            log('🔄 Triggering auth bridge sync...', 'info');
+            
+            // Trigger auth bridge sync
+            if (window.youTubeSummarizerAuthBridge) {
+                window.youTubeSummarizerAuthBridge.forceSync();
+                log('✅ Auth bridge sync triggered', 'success');
+            } else {
+                log('❌ Auth bridge not available', 'error');
+            }
+            
+            // Update UI
+            setTimeout(() => {
+                checkAuthState();
+                document.getElementById('sync-test-result').innerHTML = 
+                    '<div class="result" style="background: rgba(0,255,136,0.2); color: #00ff88;">🔐 Signed in - Check extension popup for updates</div>';
+            }, 1000);
+        }
+
+        function openYouTubeTest() {
+            log('🎬 Opening YouTube test video...', 'info');
+            window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
+            log('✅ YouTube tab opened - Test your extension there', 'success');
+        }
+
+        function clearConsole() {
+            document.getElementById('console-output').textContent = '';
+        }
+
+        // Auto-check auth state on load
+        window.addEventListener('load', () => {
+            setTimeout(checkAuthState, 1000);
+        });
+
+        // Monitor localStorage changes
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'youtube_summarizer_token' || e.key === 'youtube_summarizer_user') {
+                log(`📝 localStorage change detected: ${e.key}`, 'info');
+                setTimeout(checkAuthState, 500);
+            }
+        });
+
+        log('🚀 Authentication sync test tool loaded', 'success');
+        log('📋 Follow the test steps above to verify auth sharing', 'info');
+    </script>
+</body>
+</html>

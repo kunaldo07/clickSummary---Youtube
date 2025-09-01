@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Extension Debugger</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .passed { background-color: #d4edda; border-color: #c3e6cb; }
+        .failed { background-color: #f8d7da; border-color: #f5c6cb; }
+        .pending { background-color: #fff3cd; border-color: #ffeaa7; }
+        button { padding: 10px 20px; margin: 5px; background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        code { background: #f1f1f1; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+        .console-output { background: #1e1e1e; color: #fff; padding: 10px; border-radius: 4px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔧 YouTube Extension Troubleshooter</h1>
+    <p>This page will help you debug why your YouTube extension isn't generating summaries.</p>
+    
+    <div id="step1" class="step pending">
+        <h3>Step 1: Check Extension Installation</h3>
+        <button onclick="checkExtensionInstallation()">Check Extension</button>
+        <div id="extension-result"></div>
+    </div>
+    
+    <div id="step2" class="step pending">
+        <h3>Step 2: Test Console Logging</h3>
+        <p>Open a YouTube video and check browser console (F12 → Console) for these messages:</p>
+        <ul>
+            <li><code>🔍 YouTube Summarizer: Looking for transcript...</code></li>
+            <li><code>YouTube Summarizer initialized</code></li>
+            <li>Any error messages in red</li>
+        </ul>
+        <button onclick="openYouTubeTest()">Open Test Video</button>
+    </div>
+    
+    <div id="step3" class="step pending">
+        <h3>Step 3: Test API Connection</h3>
+        <button onclick="testAPIConnection()">Test OpenAI API</button>
+        <div id="api-result"></div>
+    </div>
+    
+    <div id="step4" class="step pending">
+        <h3>Step 4: Manual Extension Test</h3>
+        <p>Run this in the YouTube console to manually test the extension:</p>
+        <div class="console-output">// Paste this in YouTube console (F12 → Console)
+if (window.youtubeSummarizer) {
+    console.log('✅ Extension loaded');
+    console.log('Current video ID:', window.youtubeSummarizer.currentVideoId);
+    console.log('Summary container:', window.youtubeSummarizer.summaryContainer);
+} else {
+    console.log('❌ Extension not loaded');
+}</div>
+        <button onclick="copyToClipboard('if (window.youtubeSummarizer) { console.log(\'✅ Extension loaded\'); console.log(\'Current video ID:\', window.youtubeSummarizer.currentVideoId); console.log(\'Summary container:\', window.youtubeSummarizer.summaryContainer); } else { console.log(\'❌ Extension not loaded\'); }')">Copy Test Code</button>
+    </div>
+    
+    <div id="step5" class="step pending">
+        <h3>Step 5: Check Video Requirements</h3>
+        <p>The extension only works on videos that have:</p>
+        <ul>
+            <li>✅ Captions/Subtitles available (CC button visible)</li>
+            <li>✅ On a video page (not YouTube home/search)</li>
+            <li>✅ Video fully loaded</li>
+        </ul>
+        <button onclick="checkVideoRequirements()">Check Current Video</button>
+        <div id="video-requirements-result"></div>
+    </div>
+
+    <script>
+        function checkExtensionInstallation() {
+            const result = document.getElementById('extension-result');
+            
+            // Check if extension is in Chrome extensions
+            if (typeof chrome !== 'undefined' && chrome.runtime) {
+                result.innerHTML = `
+                    <p>✅ Chrome extensions API available</p>
+                    <p>📝 Next: Go to <code>chrome://extensions/</code> and check if "YouTube Video Summarizer" is:</p>
+                    <ul>
+                        <li>✅ Installed</li>
+                        <li>✅ Enabled</li>
+                        <li>✅ Has no errors</li>
+                    </ul>
+                `;
+                document.getElementById('step1').className = 'step passed';
+            } else {
+                result.innerHTML = `<p>❌ Chrome extensions API not available</p>`;
+                document.getElementById('step1').className = 'step failed';
+            }
+        }
+        
+        function openYouTubeTest() {
+            window.open('https://www.youtube.com/watch?v=jNQXAC9IVRw', '_blank');
+            document.getElementById('step2').className = 'step passed';
+        }
+        
+        async function testAPIConnection() {
+            const result = document.getElementById('api-result');
+            result.innerHTML = 'Testing API connection...';
+            
+            try {
+                const response = await fetch('https://api.openai.com/v1/models', {
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`
+                    }
+                });
+                
+                if (response.ok) {
+                    result.innerHTML = '✅ OpenAI API connection successful';
+                    document.getElementById('step3').className = 'step passed';
+                } else {
+                    result.innerHTML = `❌ API Error: ${response.status} ${response.statusText}`;
+                    document.getElementById('step3').className = 'step failed';
+                }
+            } catch (error) {
+                result.innerHTML = `❌ Network Error: ${error.message}`;
+                document.getElementById('step3').className = 'step failed';
+            }
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Code copied! Paste it in YouTube console (F12 → Console)');
+            });
+        }
+        
+        function checkVideoRequirements() {
+            const result = document.getElementById('video-requirements-result');
+            result.innerHTML = `
+                <p>📝 To check video requirements:</p>
+                <ol>
+                    <li>Go to a YouTube video</li>
+                    <li>Look for CC (captions) button on video player</li>
+                    <li>Make sure URL contains <code>/watch?v=</code></li>
+                    <li>Wait for video to fully load</li>
+                </ol>
+                <p>Try these known working videos:</p>
+                <ul>
+                    <li><a href="https://www.youtube.com/watch?v=jNQXAC9IVRw" target="_blank">Test Video 1</a></li>
+                    <li><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank">Test Video 2</a></li>
+                </ul>
+            `;
+            document.getElementById('step5').className = 'step passed';
+        }
+    </script>
+</body>
+</html>
