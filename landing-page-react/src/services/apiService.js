@@ -1,8 +1,9 @@
 import axios from 'axios';
+import config from '../config/environment';
 
-// API Configuration - Optimized for speed
+// API Configuration - Optimized for speed with environment awareness
 const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:3001/api',
+  BASE_URL: config.API_URL,
   TIMEOUT: 5000,  // Reduced timeout for faster responses
   RETRY_ATTEMPTS: 2,  // Fewer retries for speed
   RETRY_DELAY: 500   // Faster retry delay

@@ -2174,11 +2174,11 @@ ${content}
         <h3>Sign In Required</h3>
         <p>Please sign in with Google to use the AI summarizer with secure backend.</p>
         <div class="auth-buttons">
-          <button class="auth-btn-primary" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.initiateSignIn) {window.youtubeSummarizer.initiateSignIn();} else {console.warn('YouTubeSummarizer not loaded, opening sign-in directly'); window.open('http://localhost:3002/signin', '_blank');}})();">
+          <button class="auth-btn-primary" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.initiateSignIn) {window.youtubeSummarizer.initiateSignIn();} else {console.warn('YouTubeSummarizer not loaded, opening sign-in directly'); const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'; const url = isDev ? 'http://localhost:3002/signin' : 'https://www.clicksummary.com/signin'; window.open(url, '_blank');}})();">
             <span class="btn-icon">🚀</span>
             Sign In with Google
           </button>
-          <button class="auth-btn-secondary" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.openLandingPage) {window.youtubeSummarizer.openLandingPage();} else {console.warn('YouTubeSummarizer not loaded, opening landing page directly'); window.open('http://localhost:3002/signin', '_blank');}})();">
+          <button class="auth-btn-secondary" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.openLandingPage) {window.youtubeSummarizer.openLandingPage();} else {console.warn('YouTubeSummarizer not loaded, opening landing page directly'); const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'; const url = isDev ? 'http://localhost:3002/signin' : 'https://www.clicksummary.com/signin'; window.open(url, '_blank');}})();">
             <span class="btn-icon">🌐</span>
             Go to Landing Page
           </button>
@@ -2213,8 +2213,16 @@ ${content}
   openLandingPage() {
     console.log('🌐 Opening landing page for sign-in...');
     
-    // Open the actual landing page where sign-in happens
-    const landingPageUrl = 'http://localhost:3002/signin';
+    // Environment-aware URL detection
+    const isDevelopment = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' ||
+                         navigator.userAgent.includes('Development');
+    
+    const landingPageUrl = isDevelopment 
+      ? 'http://localhost:3002/signin'
+      : 'https://www.clicksummary.com/signin';
+    
+    console.log(`🌍 Opening landing page (${isDevelopment ? 'DEV' : 'PROD'}): ${landingPageUrl}`);
     window.open(landingPageUrl, '_blank');
     
     console.log('✅ Landing page opened in new tab');
@@ -2401,11 +2409,15 @@ function initializeSummarizer() {
       window.youtubeSummarizer = {
         initiateSignIn: function() { 
           console.warn('⚠️ YouTubeSummarizer not fully loaded - opening sign-in page');
-          window.open('http://localhost:3002/signin', '_blank');
+          const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          const url = isDev ? 'http://localhost:3002/signin' : 'https://www.clicksummary.com/signin';
+          window.open(url, '_blank');
         },
         openLandingPage: function() { 
           console.warn('⚠️ YouTubeSummarizer not fully loaded - opening landing page');
-          window.open('http://localhost:3002/signin', '_blank');
+          const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          const url = isDev ? 'http://localhost:3002/signin' : 'https://www.clicksummary.com/signin';
+          window.open(url, '_blank');
         },
         debug: function() {
           console.error('❌ YouTubeSummarizer failed to initialize properly');

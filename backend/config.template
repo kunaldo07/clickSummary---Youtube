@@ -2,10 +2,11 @@
 
 # Server Configuration
 PORT=3001
-NODE_ENV=development
+NODE_ENV=development  # Change to 'production' for deployment
 
 # Database
 MONGODB_URI=mongodb://localhost:27017/youtube-summarizer
+# Production example: mongodb+srv://user:pass@cluster.mongodb.net/youtube-summarizer
 
 # Authentication
 JWT_SECRET=your_super_secret_jwt_key_here_change_this_in_production
@@ -36,8 +37,16 @@ RAZORPAY_KEY_ID=your_razorpay_key_id
 RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 RAZORPAY_WEBHOOK_SECRET=your_razorpay_webhook_secret
 
-# CORS and Security
+# CORS and Security - Environment Based URLs
+# Development
 CLIENT_URL=http://localhost:3002
+FRONTEND_DOMAIN=localhost:3002
+
+# Production (uncomment and update for production)
+# CLIENT_URL=https://www.clicksummary.com
+# FRONTEND_DOMAIN=clicksummary.com
+
+# Chrome Extension
 EXTENSION_ID=your_chrome_extension_id
 
 # Rate Limiting

@@ -1,7 +1,40 @@
-// YouTube Summarizer Popup Script - Authentication Enabled
+// YouTube Summarizer Popup Script - Multi-Environment Support
 
-const WEBSITE_URL = 'http://localhost:3002';
-const BACKEND_URL = 'http://localhost:3001/api';
+// Environment detection for popup
+const detectPopupEnvironment = () => {
+  // In a Chrome extension popup, we can't use window.location, 
+  // so we'll detect based on browser environment indicators
+  const isDevelopment = navigator.userAgent.includes('Development') || 
+                       navigator.userAgent.includes('Chrome') && 
+                       navigator.userAgent.includes('localhost');
+  
+  return {
+    isDevelopment,
+    isProduction: !isDevelopment
+  };
+};
+
+const getEnvironmentURLs = () => {
+  const env = detectPopupEnvironment();
+  
+  if (env.isDevelopment) {
+    return {
+      WEBSITE_URL: 'http://localhost:3002',
+      BACKEND_URL: 'http://localhost:3001/api'
+    };
+  } else {
+    return {
+      WEBSITE_URL: 'https://www.clicksummary.com',
+      BACKEND_URL: 'https://api.clicksummary.com/api'
+    };
+  }
+};
+
+const { WEBSITE_URL, BACKEND_URL } = getEnvironmentURLs();
+
+console.log(`🌍 Popup Environment: ${detectPopupEnvironment().isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'}`);
+console.log(`🌐 Website URL: ${WEBSITE_URL}`);
+console.log(`🔗 Backend URL: ${BACKEND_URL}`);
 
 document.addEventListener('DOMContentLoaded', initializePopup);
 
@@ -102,7 +135,8 @@ async function attemptWebAppSync() {
     const landingPageTabs = tabs.filter(tab => 
       tab.url && (
         tab.url.includes('localhost:3002') || 
-        tab.url.includes('127.0.0.1:3002')
+        tab.url.includes('127.0.0.1:3002') ||
+        tab.url.includes('clicksummary.com')
       )
     );
     

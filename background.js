@@ -1,11 +1,38 @@
-// YouTube Summarizer Background Script - Secure GPT-5 Nano Version
+// YouTube Summarizer Background Script - Multi-Environment Support
 
-// Configuration for secure backend
-const CONFIG = {
-  API_BASE_URL: 'http://localhost:3001/api', // TODO: Change to production URL
-  RETRY_ATTEMPTS: 3,
-  RETRY_DELAY: 1000
+// Environment detection and configuration
+const detectEnvironment = () => {
+  // Check if we're in a development environment
+  // This can be determined by checking if localhost APIs are accessible
+  const isDevelopment = navigator.userAgent.includes('Development') || 
+                       location.hostname === 'localhost' ||
+                       location.hostname === '127.0.0.1';
+  
+  return {
+    isDevelopment,
+    isProduction: !isDevelopment
+  };
 };
+
+const getAPIBaseURL = () => {
+  const env = detectEnvironment();
+  
+  if (env.isDevelopment) {
+    return 'http://localhost:3001/api';
+  } else {
+    return 'https://api.clicksummary.com/api';
+  }
+};
+
+const CONFIG = {
+  API_BASE_URL: getAPIBaseURL(),
+  RETRY_ATTEMPTS: 3,
+  RETRY_DELAY: 1000,
+  environment: detectEnvironment()
+};
+
+console.log(`🌍 Extension Environment: ${CONFIG.environment.isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'}`);
+console.log(`🔗 API Base URL: ${CONFIG.API_BASE_URL}`);
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('bsdhjcbdjhb 🚀 Request received:', request);
@@ -132,7 +159,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       const landingPageTabs = tabs.filter(tab => 
         tab.url && (
           tab.url.includes('localhost:3002') || 
-          tab.url.includes('127.0.0.1:3002')
+          tab.url.includes('127.0.0.1:3002') ||
+          tab.url.includes('clicksummary.com')
         )
       );
       

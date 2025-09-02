@@ -8,6 +8,12 @@ const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Environment detection
+const isProduction = process.env.NODE_ENV === 'production';
+const isDevelopment = !isProduction;
+
+console.log(`🌍 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+
 // Environment validation - only require JWT_SECRET for development
 const criticalEnvVars = ['JWT_SECRET'];
 const optionalEnvVars = ['MONGODB_URI', 'OPENAI_API_KEY', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET'];
@@ -22,24 +28,55 @@ if (missingCritical.length > 0) {
   process.exit(1);
 }
 
-if (missingOptional.length > 0) {
+if (missingOptional.length > 0 && isDevelopment) {
   console.log('⚠️  Missing optional environment variables (development mode):');
   missingOptional.forEach(varName => console.log(`   - ${varName}`));
   console.log('💡 Some features may use fallback/mock implementations\n');
 }
 
 // Configure trust proxy securely based on environment
-if (process.env.NODE_ENV === 'production') {
-  // In production, only trust specific proxies (configure as needed)
-  // For example, trust only the first proxy (typical load balancer setup)
+if (isProduction) {
   app.set('trust proxy', 1);
   console.log('🔒 Trust proxy: Production mode (first proxy only)');
 } else {
-  // In development, we don't need trust proxy for localhost
-  // This prevents the rate limiting security warning
   app.set('trust proxy', false);
   console.log('🔒 Trust proxy: Development mode (disabled for security)');
 }
+
+// Environment-based CORS configuration
+const getAllowedOrigins = () => {
+  const origins = [];
+  
+  if (isDevelopment) {
+    // Development origins
+    origins.push(
+      'http://localhost:3000',
+      'http://localhost:3002',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3002'
+    );
+  }
+  
+  if (isProduction) {
+    // Production origins
+    origins.push(
+      'https://www.clicksummary.com',
+      'https://clicksummary.com'
+    );
+  }
+  
+  // Add custom CLIENT_URL if provided
+  if (process.env.CLIENT_URL) {
+    origins.push(process.env.CLIENT_URL);
+  }
+  
+  // Add Chrome extension origin if provided
+  if (process.env.EXTENSION_ID) {
+    origins.push(`chrome-extension://${process.env.EXTENSION_ID}`);
+  }
+  
+  return origins.filter(Boolean);
+};
 
 // Middleware
 app.use(helmet({
@@ -52,12 +89,22 @@ app.use(helmet({
   },
 }));
 
+const allowedOrigins = getAllowedOrigins();
+console.log('🌐 Allowed CORS origins:', allowedOrigins);
+
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || 'http://localhost:3000',
-    'http://localhost:3002',  // Add support for React app on port 3002
-    `chrome-extension://${process.env.EXTENSION_ID}`
-  ].filter(Boolean),
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Log rejected origins for debugging
+    console.warn(`⚠️ CORS rejected origin: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Extension-ID', 'X-Extension-Version']
@@ -107,9 +154,11 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
     model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     caching: process.env.ENABLE_SMART_CACHING === 'true' ? 'enabled' : 'disabled',
-    environment: process.env.NODE_ENV || 'development'
+    allowedOrigins: allowedOrigins.length,
+    mongodb: mongodbConnected ? 'connected' : 'disconnected'
   });
 });
 
@@ -148,9 +197,10 @@ app.listen(PORT, () => {
   console.log('🚀 YouTube Summarizer Backend Server');
   console.log('=====================================');
   console.log(`🌐 Server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🤖 AI Model: ${process.env.OPENAI_MODEL || 'gpt-4o-mini'}`);
   console.log(`💰 Cost limit: $${process.env.MAX_MONTHLY_COST_PER_USER || '2.50'}/user/month`);
-  console.log(`🔒 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 Caching: ${process.env.ENABLE_SMART_CACHING === 'true' ? 'enabled' : 'disabled'}`);
+  console.log(`🌐 CORS: ${allowedOrigins.length} allowed origins`);
   console.log('=====================================');
 });
