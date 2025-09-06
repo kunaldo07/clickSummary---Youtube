@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
+import { apiService } from '../services/apiService';
 import toast from 'react-hot-toast';
 
 const PageContainer = styled.div`
@@ -217,19 +218,13 @@ const SignInPage = () => {
     try {
       setLoading(true);
       
-      // Exchange code for token via backend
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/auth/google-callback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          code, 
-          redirectUri: window.location.origin + '/signin' 
-        })
+      // Exchange code for token via backend using apiService
+      const response = await apiService.post('/auth/google-callback', {
+        code, 
+        redirectUri: window.location.origin + '/signin'
       });
       
-      const data = await response.json();
+      const data = response.data;
       
       if (data.success) {
         // Store token separately
