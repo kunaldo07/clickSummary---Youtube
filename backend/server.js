@@ -55,6 +55,12 @@ const getAllowedOrigins = () => {
       'http://127.0.0.1:3000',
       'http://127.0.0.1:3002'
     );
+    
+    // ALSO allow production origins during development for testing
+    origins.push(
+      'https://www.clicksummary.com',
+      'https://clicksummary.com'
+    );
   }
   
   if (isProduction) {
@@ -97,12 +103,38 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     
+    // Check if origin is in allowed list
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     
+    // In development, be more permissive with Chrome extensions
+    if (isDevelopment) {
+      // Allow any chrome-extension:// origin in development
+      if (origin && origin.startsWith('chrome-extension://')) {
+        console.log(`✅ Allowing Chrome extension origin in development: ${origin}`);
+        return callback(null, true);
+      }
+      
+      // Allow localhost on any port in development
+      if (origin && origin.match(/^https?:\/\/(localhost|127\.0\.0\.1):/)) {
+        console.log(`✅ Allowing localhost origin in development: ${origin}`);
+        return callback(null, true);
+      }
+    }
+    
+    // In production, still allow Chrome extensions if they match extension ID
+    if (isProduction && origin && origin.startsWith('chrome-extension://') && process.env.EXTENSION_ID) {
+      const extensionOrigin = `chrome-extension://${process.env.EXTENSION_ID}`;
+      if (origin === extensionOrigin) {
+        console.log(`✅ Allowing production Chrome extension: ${origin}`);
+        return callback(null, true);
+      }
+    }
+    
     // Log rejected origins for debugging
     console.warn(`⚠️ CORS rejected origin: ${origin}`);
+    console.warn(`📋 Allowed origins:`, allowedOrigins);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,

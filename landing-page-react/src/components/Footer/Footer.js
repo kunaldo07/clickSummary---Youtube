@@ -132,7 +132,7 @@ const Footer = () => {
           <Brand>
             <BrandHeader>
               <BrandIcon>🎥</BrandIcon>
-              <BrandText>YouTube Summarizer</BrandText>
+              <BrandText>ClickSummary</BrandText>
             </BrandHeader>
             <BrandDescription>
               Transform YouTube videos into intelligent summaries with AI-powered insights. 
@@ -160,7 +160,7 @@ const Footer = () => {
 
           <FooterSection>
             <SectionTitle>Legal</SectionTitle>
-            <ExternalLink href="#privacy">Privacy Policy</ExternalLink>
+            <FooterLink to="/privacy">Privacy Policy</FooterLink>
             <ExternalLink href="#terms">Terms of Service</ExternalLink>
             <ExternalLink href="#cookies">Cookie Policy</ExternalLink>
           </FooterSection>
@@ -168,7 +168,7 @@ const Footer = () => {
 
         <FooterBottom>
           <Copyright>
-            &copy; 2024 YouTube Summarizer. All rights reserved.
+            &copy; 2025 ClickSummary . All rights reserved.
           </Copyright>
           <SocialLinks>
             <SocialLink href="#twitter" aria-label="Twitter">

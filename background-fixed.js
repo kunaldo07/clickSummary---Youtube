@@ -1,6 +1,6 @@
 // YouTube Summarizer Background Script - Multi-Environment Support
 
-// Environment detection for unpublished extensions (localhost + production)
+// Environment detection and configuration for service workers
 let environmentCache = null;
 
 const detectEnvironment = async () => {
@@ -8,9 +8,9 @@ const detectEnvironment = async () => {
     return environmentCache;
   }
   
-  console.log('🔍 Detecting environment for unpublished extension...');
+  console.log('🔍 Detecting environment...');
   
-  // First check if user has manually set a preference
+  // Check stored preference first
   try {
     const stored = await chrome.storage.local.get(['environment_preference']);
     if (stored.environment_preference) {
@@ -22,11 +22,11 @@ const detectEnvironment = async () => {
     console.log('⚠️ Could not read stored environment preference:', error);
   }
   
-  // Test if localhost backend is accessible
+  // Try to ping localhost API with very short timeout
   try {
-    console.log('🔍 Testing localhost API (http://localhost:3001)...');
+    console.log('🔍 Testing localhost API accessibility...');
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 1000); // 1 second timeout
     
     const response = await fetch('http://localhost:3001/api/health', {
       method: 'GET',
@@ -37,18 +37,16 @@ const detectEnvironment = async () => {
     clearTimeout(timeoutId);
     
     if (response.ok) {
-      console.log('✅ Localhost backend accessible - DEVELOPMENT MODE');
+      console.log('✅ Localhost API accessible - using DEVELOPMENT mode');
       environmentCache = { isDevelopment: true, isProduction: false };
       return environmentCache;
-    } else {
-      console.log('❌ Localhost backend responded with error:', response.status);
     }
   } catch (error) {
-    console.log('❌ Localhost backend not accessible:', error.message);
+    console.log('❌ Localhost API not accessible:', error.message);
   }
   
-  // If localhost fails, assume production environment
-  console.log('🌐 Localhost not available - PRODUCTION MODE');
+  // Default to production
+  console.log('🌐 Using PRODUCTION mode');
   environmentCache = { isDevelopment: false, isProduction: true };
   return environmentCache;
 };
@@ -57,26 +55,26 @@ const getAPIBaseURL = async () => {
   const env = await detectEnvironment();
   
   if (env.isDevelopment) {
-    console.log('🏠 Using localhost backend');
+    console.log('🏠 Using localhost API');
     return 'http://localhost:3001/api';
   } else {
-    console.log('🌐 Using production backend');
+    console.log('🌐 Using production API');
     return 'https://api.clicksummary.com/api';
   }
 };
 
-// Initialize CONFIG with async environment detection
+// Initialize CONFIG asynchronously with better error handling
 let CONFIG = {
-  API_BASE_URL: 'http://localhost:3001/api', // Default fallback
+  API_BASE_URL: 'http://localhost:3001/api', // Default to localhost
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
   environment: { isDevelopment: true, isProduction: false }
 };
 
-// Initialize environment detection
+// Initialize environment detection with retry
 (async () => {
   try {
-    console.log('🚀 Initializing extension environment...');
+    console.log('🚀 Initializing background script environment...');
     
     const environment = await detectEnvironment();
     const apiBaseURL = await getAPIBaseURL();
@@ -88,13 +86,21 @@ let CONFIG = {
       environment
     };
     
-    console.log('✅ Environment detection complete');
-    console.log(`🌍 Mode: ${CONFIG.environment.isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'}`);
-    console.log(`🔗 API URL: ${CONFIG.API_BASE_URL}`);
+    console.log('✅ Background script initialized successfully');
+    console.log(`🌍 Environment: ${CONFIG.environment.isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'}`);
+    console.log(`🔗 API Base URL: ${CONFIG.API_BASE_URL}`);
     
   } catch (error) {
-    console.error('❌ Environment detection failed:', error);
-    console.log('🔄 Using localhost fallback');
+    console.error('❌ Background script initialization failed:', error);
+    console.log('🔄 Using localhost fallback configuration');
+    
+    // Fallback to localhost if detection fails
+    CONFIG = {
+      API_BASE_URL: 'http://localhost:3001/api',
+      RETRY_ATTEMPTS: 3,
+      RETRY_DELAY: 1000,
+      environment: { isDevelopment: true, isProduction: false }
+    };
   }
 })();
 
@@ -546,13 +552,14 @@ async function handleChatQuery(requestData) {
       throw new Error('Please sign in to use the chat feature');
     }
 
-    console.log('💬 Processing chat query:', requestData.question);
+    console.log('💬 Processing chat query:', requestData.query);
 
     // Call secure backend for chat queries
     const response = await callSecureBackend('/summarizer/chat', {
-      question: requestData.question,
-      transcript: requestData.transcript,
-      videoId: requestData.videoId
+      query: requestData.query,
+      context: requestData.context,
+      videoId: requestData.videoId,
+      conversationId: requestData.conversationId
     }, userToken);
 
     console.log('✅ Chat response generated successfully');

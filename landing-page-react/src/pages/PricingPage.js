@@ -347,7 +347,7 @@ const PricingPage = () => {
         { text: '5 summaries per day', enabled: true },
         { text: 'Basic video summaries', enabled: true },
         { text: 'Standard processing time', enabled: true },
-        { text: 'Advanced AI insights', enabled: false },
+        // { text: 'Advanced AI insights', enabled: false },
         { text: 'Interactive AI chat', enabled: false },
         { text: 'Export summaries', enabled: false }
       ],
@@ -366,7 +366,7 @@ const PricingPage = () => {
       popular: true,
       features: [
         { text: 'Unlimited summaries', enabled: true },
-        { text: 'Advanced AI insights', enabled: true },
+        // { text: 'Advanced AI insights', enabled: true },
         { text: 'Interactive AI chat', enabled: true },
         { text: 'Export summaries', enabled: true },
         { text: 'Priority processing', enabled: true },

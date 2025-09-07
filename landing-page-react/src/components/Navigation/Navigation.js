@@ -329,7 +329,7 @@ const Navigation = () => {
       <NavContent>
         <Brand to="/">
           <BrandIcon>🎥</BrandIcon>
-          <span>YouTube Summarizer</span>
+          <span>ClickSummary</span>
         </Brand>
 
         <NavLinks>

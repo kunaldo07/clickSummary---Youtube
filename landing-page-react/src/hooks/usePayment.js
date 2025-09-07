@@ -66,7 +66,7 @@ export const PaymentProvider = ({ children }) => {
         key: process.env.REACT_APP_RAZORPAY_KEY || 'rzp_test_your_key_here',
         amount: order.amount,
         currency: order.currency,
-        name: 'YouTube Summarizer',
+        name: 'ClickSummary',
         description: 'Premium Monthly Subscription - $10/month',
         order_id: order.id,
         subscription_id: subscription.id,

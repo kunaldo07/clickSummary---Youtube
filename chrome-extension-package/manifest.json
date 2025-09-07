@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ClickSummary",
   "version": "1.0.0",
-  "description": "Extract transcripts from YouTube videos and generate AI-powered summaries",
+  "description": "Get instant AI-powered summaries of any YouTube video. Save time and learn faster with one click.",
   "homepage_url": "https://www.clicksummary.com",
   "privacy_policy": "https://www.clicksummary.com/privacy",
   "permissions": [
@@ -41,7 +41,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "YouTube Summarizer - Ready to use!",
+    "default_title": "ClickSummary - Ready to use!",
     "default_popup": "popup.html"
   },
   "icons": {

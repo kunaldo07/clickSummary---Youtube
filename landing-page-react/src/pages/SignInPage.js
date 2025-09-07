@@ -293,7 +293,7 @@ const SignInPage = () => {
       >
         <Logo>
           <LogoIcon>🎥</LogoIcon>
-          <LogoText>YouTube Summarizer</LogoText>
+          <LogoText>ClickSummary</LogoText>
         </Logo>
 
         <Title>Welcome Back!</Title>

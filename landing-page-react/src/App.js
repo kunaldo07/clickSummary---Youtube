@@ -19,6 +19,7 @@ const Footer = memo(lazy(() => import('./components/Footer/Footer')));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const SignInPage = lazy(() => import('./pages/SignInPage'));
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 
 // Global Styles
 const GlobalStyle = createGlobalStyle`
@@ -156,6 +157,7 @@ function App() {
                     <Route path="/" element={<HomePage />} />
                     <Route path="/pricing" element={<PricingPage />} />
                     <Route path="/signin" element={<SignInPage />} />
+                    <Route path="/privacy" element={<PrivacyPage />} />
                     <Route path="*" element={<HomePage />} />
                   </Routes>
                 </Suspense>

@@ -238,7 +238,7 @@ const HomePage = () => {
 
       <FeaturesSection>
         <Container>
-          <SectionTitle>Why Choose YouTube Summarizer?</SectionTitle>
+          <SectionTitle>Why Choose ClickSummary?</SectionTitle>
           <FeaturesGrid>
             {features.map((feature, index) => (
               <FeatureCard

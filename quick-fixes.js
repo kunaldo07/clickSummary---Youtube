@@ -1,17 +1,20 @@
 // Quick fixes to try in YouTube console
 
-// Fix 1: Force regenerate summary
-function forceRegenerateSummary() {
+// Fix 1: Clear cache and refresh page
+function clearCacheAndRefresh() {
     if (window.youtubeSummarizer) {
-        console.log('🔄 Forcing summary regeneration...');
+        console.log('🗑️ Clearing cache and refreshing page...');
         
         // Clear cache first
-        chrome.runtime.sendMessage({ action: 'clearCache' });
+        if (typeof window.youtubeSummarizer.clearSummaryCache === 'function') {
+            window.youtubeSummarizer.clearSummaryCache();
+        }
         
-        // Wait a moment then regenerate
-        setTimeout(() => {
-            window.youtubeSummarizer.generateAllSummaries();
-        }, 1000);
+        // Refresh the page
+        console.log('🔄 Refreshing page...');
+        location.reload();
+    } else {
+        console.error('❌ YouTubeSummarizer not found! Try refreshing the page.');
     }
 }
 
@@ -79,7 +82,7 @@ async function manualTranscriptAndSummary() {
 
 console.log('🛠️ Quick Fixes Loaded!');
 console.log('Try these in order:');
-console.log('1. forceRegenerateSummary()');
+console.log('1. clearCacheAndRefresh()');
 console.log('2. resetExtensionState()');
 console.log('3. manualTranscriptAndSummary()');
 console.log('4. Refresh page: location.reload()');
