@@ -601,7 +601,16 @@ async function callSecureBackend(endpoint, data, userToken) {
         if (response.status === 401) {
           throw new Error('Authentication failed. Please sign in again.');
         } else if (response.status === 429) {
-          throw new Error(errorData.error || 'Rate limit exceeded. Please try again later.');
+          // Handle usage limit errors
+          if (errorData.code === 'DAILY_LIMIT_EXCEEDED') {
+            const details = errorData.details || {};
+            throw new Error(`Daily limit reached! You've used ${details.used}/${details.limit} summaries today. ${details.planType === 'free' ? 'Upgrade to Premium for unlimited summaries.' : 'Limit resets tomorrow.'}`);
+          } else if (errorData.code === 'DAILY_CHAT_LIMIT_EXCEEDED') {
+            const details = errorData.details || {};
+            throw new Error(`Daily chat limit reached! You've used ${details.used}/${details.limit} chat queries today. ${details.planType === 'free' ? 'Upgrade to Premium for unlimited chat.' : 'Limit resets tomorrow.'}`);
+          } else {
+            throw new Error(errorData.error || 'Rate limit exceeded. Please try again later.');
+          }
         } else if (response.status === 403) {
           throw new Error('Subscription required. Please upgrade your plan.');
         } else {

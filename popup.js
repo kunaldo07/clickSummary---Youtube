@@ -422,28 +422,61 @@ async function updatePlanDetails(user, token) {
       }
     }
     
-    // Try to fetch usage data
-    try {
-      const response = await fetch(`${BACKEND_URL}/auth/profile/analytics`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.analytics && typeof data.analytics.summariesThisMonth === 'number') {
-          summariesCount.textContent = data.analytics.summariesThisMonth.toString();
-        }
-      }
-    } catch (error) {
-      console.warn('Could not fetch usage data:', error);
-      summariesCount.textContent = 'N/A';
-    }
+    // Fetch usage information from backend
+    await fetchAndDisplayUsage(token, summariesCount);
     
   } catch (error) {
     console.error('Error updating plan details:', error);
+  }
+}
+
+async function fetchAndDisplayUsage(token, summariesElement) {
+  try {
+    console.log('📊 Fetching usage information...');
+    
+    const response = await fetch(`${BACKEND_URL}/summarizer/usage`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Usage fetch failed: ${response.status}`);
+    }
+
+    const usageData = await response.json();
+    console.log('📈 Usage data received:', usageData);
+
+    // Update summary count with usage info
+    if (usageData.limits.summaries === -1) {
+      summariesElement.textContent = `${usageData.usage.summaries.today} today (Unlimited)`;
+    } else {
+      summariesElement.textContent = `${usageData.usage.summaries.today}/${usageData.limits.summaries} today`;
+    }
+
+    // Update plan expiry with chat usage info
+    const planExpiry = document.getElementById('plan-expiry');
+    if (usageData.limits.chatQueries === -1) {
+      planExpiry.textContent = `Chat: Unlimited`;
+    } else {
+      planExpiry.textContent = `Chat: ${usageData.usage.chat.today}/${usageData.limits.chatQueries} today`;
+    }
+
+    // Show upgrade button if user has reached limits
+    const upgradeBtn = document.getElementById('upgrade-plan-btn');
+    if (!usageData.isPaid && (!usageData.usage.summaries.canUse || !usageData.usage.chat.canUse)) {
+      upgradeBtn.classList.remove('hidden');
+      upgradeBtn.innerHTML = `
+        <span class="btn-icon">⭐</span>
+        ${!usageData.usage.summaries.canUse ? 'Summary limit reached!' : 'Chat limit reached!'}
+      `;
+    }
+
+  } catch (error) {
+    console.error('❌ Error fetching usage:', error);
+    summariesElement.textContent = 'Unable to load usage';
   }
 }
 

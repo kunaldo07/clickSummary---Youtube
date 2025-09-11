@@ -67,6 +67,29 @@ router.post('/summarize', auth, requireActiveSubscription, checkCostLimit, async
     console.log('🚀 RECEIVED DATA:', { transcript, videoId, type, length, format });
     console.log(`🎯 Generating ${type} ${length} summary for video ${videoId} (user: ${userId})`);
 
+    // Get user and check usage limits
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if user can create a summary
+    const summaryCheck = user.canCreateSummary();
+    if (!summaryCheck.allowed) {
+      const limits = user.getDailyLimits();
+      return res.status(429).json({ 
+        error: 'Daily summary limit reached',
+        code: 'DAILY_LIMIT_EXCEEDED',
+        details: {
+          limit: limits.summaries,
+          used: summaryCheck.used,
+          remaining: summaryCheck.remaining,
+          planType: user.subscription.planType,
+          resetTime: new Date(Date.now() + (24 * 60 * 60 * 1000)) // Tomorrow
+        }
+      });
+    }
+
     // Optimize transcript for GPT-4o Mini
     const optimizedTranscript = optimizeTranscriptForModel(transcript);
 
@@ -87,7 +110,6 @@ router.post('/summarize', auth, requireActiveSubscription, checkCostLimit, async
     await trackCost(userId, videoId, 'summary_generated', CONFIG.PRIMARY_MODEL, result.inputTokens, result.outputTokens, cost);
     
     // Update user usage
-    const user = await User.findById(userId);
     user.incrementUsage('summary', cost);
     await user.save();
 
@@ -133,6 +155,29 @@ router.post('/chat', auth, requireActiveSubscription, checkCostLimit, async (req
 
     console.log(`💬 Processing chat query for video ${videoId} (user: ${userId})`);
 
+    // Get user and check usage limits
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if user can use chat feature
+    const chatCheck = user.canUseChat();
+    if (!chatCheck.allowed) {
+      const limits = user.getDailyLimits();
+      return res.status(429).json({ 
+        error: 'Daily chat limit reached',
+        code: 'DAILY_CHAT_LIMIT_EXCEEDED',
+        details: {
+          limit: limits.chatQueries,
+          used: chatCheck.used,
+          remaining: chatCheck.remaining,
+          planType: user.subscription.planType,
+          resetTime: new Date(Date.now() + (24 * 60 * 60 * 1000)) // Tomorrow
+        }
+      });
+    }
+
     // Optimize transcript for context
     const optimizedTranscript = optimizeTranscriptForModel(transcript);
     
@@ -149,7 +194,6 @@ router.post('/chat', auth, requireActiveSubscription, checkCostLimit, async (req
     await trackCost(userId, videoId, 'chat_query', CONFIG.PRIMARY_MODEL, result.inputTokens, result.outputTokens, cost);
     
     // Update user usage
-    const user = await User.findById(userId);
     user.incrementUsage('chat', cost);
     await user.save();
 
@@ -380,5 +424,52 @@ function getMaxTokensForLength(length) {
 function hashString(str) {
   return crypto.createHash('md5').update(str).digest('hex');
 }
+
+// Get user usage information
+router.get('/usage', auth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Get user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Reset daily usage if needed
+    user.resetDailyUsage();
+    
+    // Get limits and usage info
+    const limits = user.getDailyLimits();
+    const summaryCheck = user.canCreateSummary();
+    const chatCheck = user.canUseChat();
+
+    res.json({
+      planType: user.subscription.planType,
+      isPaid: user.canUsePremiumFeatures(),
+      limits: {
+        summaries: limits.summaries,
+        chatQueries: limits.chatQueries
+      },
+      usage: {
+        summaries: {
+          today: user.usage.summariesToday,
+          remaining: summaryCheck.remaining,
+          canUse: summaryCheck.allowed
+        },
+        chat: {
+          today: user.usage.chatQueriesToday,
+          remaining: chatCheck.remaining,
+          canUse: chatCheck.allowed
+        }
+      },
+      resetTime: new Date(Date.now() + (24 * 60 * 60 * 1000)) // Tomorrow
+    });
+
+  } catch (error) {
+    console.error('Usage info error:', error);
+    res.status(500).json({ error: 'Failed to get usage information' });
+  }
+});
 
 module.exports = router;

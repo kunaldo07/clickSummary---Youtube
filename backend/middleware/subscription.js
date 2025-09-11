@@ -73,8 +73,8 @@ const requirePlan = (requiredPlan) => {
 
       // Check if user has the required plan
       const validPlans = {
-        'basic': ['monthly', 'quarterly'],
-        'premium': ['quarterly']
+        'basic': ['monthly'], // Simplified - only monthly plan available
+        'premium': ['monthly'] // Premium also uses monthly plan
       };
 
       const userPlan = user.subscription.planType;
@@ -154,11 +154,8 @@ const getUsageStats = (user) => {
     monthly: {
       summariesPerMonth: 100,
       chatQueriesPerMonth: 200
-    },
-    quarterly: {
-      summariesPerMonth: 150,
-      chatQueriesPerMonth: 300
     }
+    // Removed quarterly plan limits - only monthly available now
   };
 
   const userLimits = user.hasActiveSubscription 

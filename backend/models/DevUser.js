@@ -19,7 +19,19 @@ class DevUser {
       subscriptionId: null,
       currentPeriodStart: new Date(),
       currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-      cancelAtPeriodEnd: false
+      cancelAtPeriodEnd: false,
+      isActive: false,
+      planType: 'free',
+      trialEndsAt: null
+    };
+    this.usage = data.usage || {
+      summariesThisMonth: 0,
+      chatQueriesThisMonth: 0,
+      costThisMonth: 0,
+      lastResetDate: new Date(),
+      summariesToday: 0,
+      chatQueriesToday: 0,
+      lastDailyReset: new Date()
     };
     this.lastLoginAt = data.lastLoginAt || new Date();
     this.lastActiveAt = data.lastActiveAt || new Date();
@@ -145,6 +157,110 @@ class DevUser {
            req.socket?.remoteAddress ||
            (req.connection?.socket ? req.connection.socket.remoteAddress : null) ||
            'localhost';
+  }
+
+  // Virtual for checking if subscription is active
+  get hasActiveSubscription() {
+    if (!this.subscription.isActive) return false;
+    if (!this.subscription.currentPeriodEnd) return false;
+    return new Date() < this.subscription.currentPeriodEnd;
+  }
+
+  // Method to reset daily usage
+  resetDailyUsage() {
+    const now = new Date();
+    const lastReset = this.usage.lastDailyReset;
+    
+    // Check if it's a new day (compare dates only, not time)
+    const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const resetDate = new Date(lastReset.getFullYear(), lastReset.getMonth(), lastReset.getDate());
+    
+    if (nowDate.getTime() !== resetDate.getTime()) {
+      this.usage.summariesToday = 0;
+      this.usage.chatQueriesToday = 0;
+      this.usage.lastDailyReset = now;
+      return true;
+    }
+    return false;
+  }
+
+  // Method to check if user can use premium features
+  canUsePremiumFeatures() {
+    // Check if trial is still active
+    if (this.subscription.trialEndsAt && new Date() < this.subscription.trialEndsAt) {
+      return true;
+    }
+    
+    // Check if subscription is active
+    return this.hasActiveSubscription;
+  }
+
+  // Get daily limits based on subscription plan
+  getDailyLimits() {
+    const isPaid = this.canUsePremiumFeatures() || this.subscription.planType !== 'free';
+    
+    return {
+      summaries: isPaid ? -1 : 5, // -1 means unlimited
+      chatQueries: isPaid ? -1 : 1
+    };
+  }
+
+  // Check if user can create a summary
+  canCreateSummary() {
+    this.resetDailyUsage(); // Auto-reset if new day
+    
+    const limits = this.getDailyLimits();
+    
+    // Unlimited for paid users
+    if (limits.summaries === -1) {
+      return { allowed: true, remaining: -1 };
+    }
+    
+    // Check free user limits
+    const remaining = limits.summaries - this.usage.summariesToday;
+    return {
+      allowed: remaining > 0,
+      remaining: Math.max(0, remaining),
+      limit: limits.summaries,
+      used: this.usage.summariesToday
+    };
+  }
+
+  // Check if user can use chat feature
+  canUseChat() {
+    this.resetDailyUsage(); // Auto-reset if new day
+    
+    const limits = this.getDailyLimits();
+    
+    // Unlimited for paid users
+    if (limits.chatQueries === -1) {
+      return { allowed: true, remaining: -1 };
+    }
+    
+    // Check free user limits
+    const remaining = limits.chatQueries - this.usage.chatQueriesToday;
+    return {
+      allowed: remaining > 0,
+      remaining: Math.max(0, remaining),
+      limit: limits.chatQueries,
+      used: this.usage.chatQueriesToday
+    };
+  }
+
+  // Method to increment usage
+  incrementUsage(type, cost = 0) {
+    this.resetDailyUsage(); // Auto-reset if new day
+    
+    if (type === 'summary') {
+      this.usage.summariesThisMonth += 1;
+      this.usage.summariesToday += 1;
+    } else if (type === 'chat') {
+      this.usage.chatQueriesThisMonth += 1;
+      this.usage.chatQueriesToday += 1;
+    }
+    
+    this.usage.costThisMonth += cost;
+    this.lastActiveAt = new Date();
   }
 
   static findByGoogleId(googleId) {

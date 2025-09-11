@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: false },
     planType: { 
       type: String, 
-      enum: ['free', 'monthly', 'quarterly'], 
+      enum: ['free', 'monthly'], // Removed quarterly - simplified to Free and Monthly only 
       default: 'free' 
     },
     razorpaySubscriptionId: String,
@@ -56,7 +56,11 @@ const userSchema = new mongoose.Schema({
     summariesThisMonth: { type: Number, default: 0 },
     chatQueriesThisMonth: { type: Number, default: 0 },
     costThisMonth: { type: Number, default: 0 },
-    lastResetDate: { type: Date, default: Date.now }
+    lastResetDate: { type: Date, default: Date.now },
+    // Daily usage tracking for limits
+    summariesToday: { type: Number, default: 0 },
+    chatQueriesToday: { type: Number, default: 0 },
+    lastDailyReset: { type: Date, default: Date.now }
   },
   preferences: {
     defaultSummaryType: { 
@@ -140,6 +144,24 @@ userSchema.methods.resetMonthlyUsage = function() {
   return false;
 };
 
+// Method to reset daily usage
+userSchema.methods.resetDailyUsage = function() {
+  const now = new Date();
+  const lastReset = this.usage.lastDailyReset;
+  
+  // Check if it's a new day (compare dates only, not time)
+  const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const resetDate = new Date(lastReset.getFullYear(), lastReset.getMonth(), lastReset.getDate());
+  
+  if (nowDate.getTime() !== resetDate.getTime()) {
+    this.usage.summariesToday = 0;
+    this.usage.chatQueriesToday = 0;
+    this.usage.lastDailyReset = now;
+    return true;
+  }
+  return false;
+};
+
 // Method to check if user can use premium features
 userSchema.methods.canUsePremiumFeatures = function() {
   // Check if trial is still active
@@ -151,14 +173,69 @@ userSchema.methods.canUsePremiumFeatures = function() {
   return this.hasActiveSubscription;
 };
 
+// Get daily limits based on subscription plan
+userSchema.methods.getDailyLimits = function() {
+  const isPaid = this.canUsePremiumFeatures() || this.subscription.planType !== 'free';
+  
+  return {
+    summaries: isPaid ? -1 : 5, // -1 means unlimited
+    chatQueries: isPaid ? -1 : 1
+  };
+};
+
+// Check if user can create a summary
+userSchema.methods.canCreateSummary = function() {
+  this.resetDailyUsage(); // Auto-reset if new day
+  
+  const limits = this.getDailyLimits();
+  
+  // Unlimited for paid users
+  if (limits.summaries === -1) {
+    return { allowed: true, remaining: -1 };
+  }
+  
+  // Check free user limits
+  const remaining = limits.summaries - this.usage.summariesToday;
+  return {
+    allowed: remaining > 0,
+    remaining: Math.max(0, remaining),
+    limit: limits.summaries,
+    used: this.usage.summariesToday
+  };
+};
+
+// Check if user can use chat feature
+userSchema.methods.canUseChat = function() {
+  this.resetDailyUsage(); // Auto-reset if new day
+  
+  const limits = this.getDailyLimits();
+  
+  // Unlimited for paid users
+  if (limits.chatQueries === -1) {
+    return { allowed: true, remaining: -1 };
+  }
+  
+  // Check free user limits
+  const remaining = limits.chatQueries - this.usage.chatQueriesToday;
+  return {
+    allowed: remaining > 0,
+    remaining: Math.max(0, remaining),
+    limit: limits.chatQueries,
+    used: this.usage.chatQueriesToday
+  };
+};
+
 // Method to increment usage
 userSchema.methods.incrementUsage = function(type, cost = 0) {
   this.resetMonthlyUsage(); // Auto-reset if new month
+  this.resetDailyUsage(); // Auto-reset if new day
   
   if (type === 'summary') {
     this.usage.summariesThisMonth += 1;
+    this.usage.summariesToday += 1;
   } else if (type === 'chat') {
     this.usage.chatQueriesThisMonth += 1;
+    this.usage.chatQueriesToday += 1;
   }
   
   this.usage.costThisMonth += cost;

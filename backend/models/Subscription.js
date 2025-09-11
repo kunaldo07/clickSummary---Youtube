@@ -20,7 +20,7 @@ const subscriptionSchema = new mongoose.Schema({
   },
   planType: {
     type: String,
-    enum: ['free', 'monthly', 'quarterly'],
+    enum: ['free', 'monthly'], // Removed quarterly - simplified to Free and Monthly only
     default: 'free',
     required: true
   },
@@ -203,8 +203,8 @@ subscriptionSchema.methods.cancel = function(reason = 'user_request', immediate 
 // Method to get billing amount for current plan
 subscriptionSchema.methods.getBillingAmount = function() {
   const plans = {
-    monthly: 1000, // ₹10 in paise
-    quarterly: 2400 // ₹24 in paise
+    monthly: 1000 // $10 in cents (simplified to monthly only)
+    // Removed quarterly plan
   };
   
   return plans[this.planType] || 0;
@@ -306,9 +306,8 @@ subscriptionSchema.pre('save', function(next) {
     
     if (this.planType === 'monthly') {
       endDate.setMonth(endDate.getMonth() + 1);
-    } else if (this.planType === 'quarterly') {
-      endDate.setMonth(endDate.getMonth() + 3);
     }
+    // Removed quarterly logic - only monthly plan now
     
     this.endDate = endDate;
   }

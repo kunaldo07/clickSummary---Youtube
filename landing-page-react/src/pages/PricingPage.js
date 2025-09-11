@@ -98,60 +98,49 @@ const PlanCard = styled(motion.div)`
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-  }
-
-  &:hover {
-    transform: translateY(-8px);
-    border-color: rgba(139, 92, 246, 0.3);
-    box-shadow: 0 16px 64px rgba(139, 92, 246, 0.2);
-
-    &::before {
-      opacity: 1;
-    }
+    background: ${props => props.$popular ? 
+      'linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%)' : 
+      'rgba(255, 255, 255, 0.5)'};
+    z-index: -1;
+    border-radius: 17px;
   }
 
   ${props => props.$popular && `
     border-color: #8b5cf6;
     transform: scale(1.05);
-    
-    &:hover {
-      transform: scale(1.05) translateY(-8px);
-    }
+    box-shadow: 0 16px 64px rgba(139, 92, 246, 0.15);
   `}
+
+  &:hover {
+    transform: ${props => props.$popular ? 'scale(1.08)' : 'scale(1.02)'};
+    box-shadow: 0 16px 64px rgba(0, 0, 0, 0.12);
+  }
 `;
 
 const PopularBadge = styled.div`
   position: absolute;
-  top: -12px;
+  top: -3px;
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   color: white;
-  padding: 8px 24px;
-  border-radius: 20px;
+  padding: 8px 20px;
+  border-radius: 0 0 12px 12px;
   font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
 `;
 
 const PlanHeader = styled.div`
   text-align: center;
-  margin-bottom: 24px;
-  padding-top: 16px;
+  margin-bottom: 32px;
 `;
 
 const PlanName = styled.h3`
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 700;
   color: #1f2937;
-  margin-bottom: 16px;
-  letter-spacing: -0.5px;
+  margin-bottom: 8px;
 `;
 
 const PlanPrice = styled.div`
@@ -159,130 +148,103 @@ const PlanPrice = styled.div`
   align-items: baseline;
   justify-content: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 `;
 
 const PriceAmount = styled.span`
   font-size: 3rem;
   font-weight: 900;
-  color: #111827;
-  background: linear-gradient(135deg, #1f2937 0%, #4f46e5 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: ${props => props.$popular ? '#8b5cf6' : '#1f2937'};
   line-height: 1;
-
-  ${props => props.$popular && `
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  `}
 `;
 
 const PricePeriod = styled.span`
+  font-size: 1rem;
   color: #6b7280;
-  font-weight: 600;
-  margin-top: 8px;
+  font-weight: 500;
 `;
 
-const PlanFeatures = styled.div`
-  margin-bottom: 24px;
+const PlanFeatures = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px 0;
+  space-y: 12px;
 `;
 
-const FeatureItem = styled.div`
+const FeatureItem = styled.li`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid #f1f5f9;
-  transition: all 0.2s ease;
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  ${props => props.$disabled && `opacity: 0.5;`}
+  color: ${props => props.$disabled ? '#9ca3af' : '#374151'};
+  opacity: ${props => props.$disabled ? 0.6 : 1};
 `;
 
 const FeatureIcon = styled.span`
-  font-size: 1rem;
-  min-width: 18px;
+  font-size: 1.125rem;
+  flex-shrink: 0;
 `;
 
 const FeatureText = styled.span`
   font-size: 0.875rem;
-  color: #374151;
-  font-weight: 500;
+  line-height: 1.5;
 `;
 
 const PlanButton = styled(motion.button)`
   width: 100%;
-  padding: 14px 24px;
+  padding: 16px 24px;
   border-radius: 12px;
+  font-weight: 600;
   font-size: 1rem;
-  font-weight: 700;
   border: none;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  position: relative;
-  overflow: hidden;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 
-  ${props => props.$variant === 'free' && `
-    background: #f8fafc;
-    color: #475569;
-    border: 2px solid #e2e8f0;
+  ${props => {
+    if (props.$variant === 'free') {
+      return `
+        background: #f3f4f6;
+        color: #6b7280;
+        border: 2px solid #e5e7eb;
 
-    &:hover {
-      background: #f1f5f9;
-      border-color: #cbd5e1;
-      transform: translateY(-2px);
+        &:hover:not(:disabled) {
+          background: #e5e7eb;
+          color: #374151;
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+      `;
+    } else {
+      return `
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: white;
+        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+
+        &:hover:not(:disabled) {
+          background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+          box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+      `;
     }
-  `}
-
-  ${props => props.$variant === 'premium' && `
-    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-    color: white;
-    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
-
-    &:hover {
-      box-shadow: 0 12px 32px rgba(139, 92, 246, 0.5);
-      transform: translateY(-2px);
-    }
-
-    &:active {
-      transform: translateY(0);
-    }
-  `}
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
+  }}
 
   ${props => props.$loading && `
-    pointer-events: none;
-    
-    &::after {
-      content: '';
-      position: absolute;
-      width: 16px;
-      height: 16px;
-      border: 2px solid transparent;
-      border-top: 2px solid currentColor;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+    opacity: 0.8;
+    cursor: wait;
   `}
 `;
 
@@ -292,16 +254,12 @@ const GuaranteeBadge = styled.div`
   justify-content: center;
   gap: 8px;
   margin-top: 16px;
+  padding: 12px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 8px;
+  font-size: 0.875rem;
   color: #059669;
-  font-size: 0.875rem;
-  font-weight: 600;
-`;
-
-const SecurityNote = styled.div`
-  text-align: center;
-  margin-top: 48px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.875rem;
+  font-weight: 500;
 `;
 
 const PricingPage = () => {
@@ -315,20 +273,20 @@ const PricingPage = () => {
     }
   }, [user]);
 
-  const handleSubscribeToPremium = async () => {
+  const handleSubscribeToPremium = async (planType = 'monthly') => {
     if (!isAuthenticated) {
       toast.error('Please sign in to subscribe');
       return;
     }
 
-    const result = await subscribeToPremium();
+    const result = await subscribeToPremium(planType);
     if (result.success) {
-      setCurrentPlan('premium');
+      setCurrentPlan(planType);
     }
   };
 
   const handleSelectFreePlan = () => {
-    if (currentPlan === 'premium') {
+    if (currentPlan === 'monthly') { // Simplified - only check for monthly
       toast('You can downgrade to Free plan from your account settings', {
         icon: 'ℹ️'
       });
@@ -337,17 +295,18 @@ const PricingPage = () => {
     }
   };
 
+  // Simplified plans - only Free and Monthly
   const plans = [
     {
       id: 'free',
       name: 'Free',
-      price: '$0',
+      price: '₹0',
       period: 'forever',
       features: [
         { text: '5 summaries per day', enabled: true },
+        { text: '1 AI chat per day', enabled: true },
         { text: 'Basic video summaries', enabled: true },
         { text: 'Standard processing time', enabled: true },
-        // { text: 'Advanced AI insights', enabled: false },
         { text: 'Interactive AI chat', enabled: false },
         { text: 'Export summaries', enabled: false }
       ],
@@ -359,24 +318,24 @@ const PricingPage = () => {
       }
     },
     {
-      id: 'premium',
+      id: 'monthly',
       name: 'Premium',
-      price: '$10',
+      price: '₹800',
       period: 'per month',
       popular: true,
       features: [
         { text: 'Unlimited summaries', enabled: true },
-        // { text: 'Advanced AI insights', enabled: true },
-        { text: 'Interactive AI chat', enabled: true },
+        { text: 'Unlimited AI chat', enabled: true },
+        { text: 'All summary formats', enabled: true },
         { text: 'Export summaries', enabled: true },
         { text: 'Priority processing', enabled: true },
         { text: 'Custom summary formats', enabled: true }
       ],
       button: {
-        text: currentPlan === 'premium' ? 'Current Plan' : 'Upgrade to Premium',
+        text: currentPlan === 'monthly' ? 'Current Plan' : 'Upgrade to Premium',
         variant: 'premium',
-        disabled: currentPlan === 'premium',
-        onClick: handleSubscribeToPremium
+        disabled: currentPlan === 'monthly',
+        onClick: () => handleSubscribeToPremium('monthly')
       },
       guarantee: true
     }
@@ -392,16 +351,16 @@ const PricingPage = () => {
           <HeroTitle
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            transition={{ duration: 0.8 }}
           >
-            Choose Your Plan
+            Simple Pricing for Everyone
           </HeroTitle>
           <HeroSubtitle
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
           >
-            Unlock the power of AI-driven video summarization with our secure backend
+            Choose the perfect plan for your YouTube summary needs. Start free, upgrade when you're ready.
           </HeroSubtitle>
         </Container>
       </HeroSection>
@@ -438,18 +397,18 @@ const PricingPage = () => {
 
                 <PlanButton
                   $variant={plan.button.variant}
-                  $loading={loading && plan.id === 'premium'}
-                  disabled={plan.button.disabled || (loading && plan.id === 'premium')}
+                  $loading={loading && plan.id === 'monthly'}
+                  disabled={plan.button.disabled || (loading && plan.id === 'monthly')}
                   onClick={plan.button.onClick}
                   whileHover={{ scale: plan.button.disabled ? 1 : 1.02 }}
                   whileTap={{ scale: plan.button.disabled ? 1 : 0.98 }}
                 >
-                  {loading && plan.id === 'premium' ? (
+                  {loading && plan.id === 'monthly' ? (
                     <span>Processing...</span>
                   ) : (
                     <>
                       <span>{plan.button.text}</span>
-                      {plan.id === 'premium' && !plan.button.disabled && <span>🚀</span>}
+                      {plan.id === 'monthly' && !plan.button.disabled && <span>🚀</span>}
                     </>
                   )}
                 </PlanButton>
@@ -463,10 +422,6 @@ const PricingPage = () => {
               </PlanCard>
             ))}
           </PlansGrid>
-
-          <SecurityNote>
-            <div>🔒 Secure payments powered by Razorpay • Cancel anytime</div>
-          </SecurityNote>
         </Container>
       </PlansSection>
     </PageContainer>

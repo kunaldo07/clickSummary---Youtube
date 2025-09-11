@@ -153,7 +153,7 @@ class YouTubeSummarizer {
       
     } catch (error) {
       console.error('Error starting summarization:', error);
-      this.displayError('Failed to generate summary: ' + error.message);
+      this.displayError(this.formatUserFriendlyError(error.message, 'summary'));
     } finally {
       this.isProcessing = false;
     }
@@ -489,7 +489,7 @@ class YouTubeSummarizer {
       this.updateSummaryDisplay();
         } catch (error) {
       console.error(`Failed to generate ${this.currentSummaryType} ${this.currentLength} summary:`, error);
-      this.summaries[this.currentSummaryType][this.currentLength] = `Failed to generate summary: ${error.message}`;
+      this.summaries[this.currentSummaryType][this.currentLength] = this.formatUserFriendlyError(error.message, 'summary');
       this.updateSummaryDisplay();
     }
   }
@@ -1918,7 +1918,7 @@ ${content}
         this.addMessageToChat('bot', answer);
       } catch (error) {
         this.removeTypingIndicator();
-        this.addMessageToChat('bot', 'Sorry, I encountered an error while processing your question. Please try again.');
+        this.addMessageToChat('bot', this.formatUserFriendlyError(error.message, 'chat'));
         console.error('Chat error:', error);
       }
 
@@ -2070,6 +2070,49 @@ ${content}
       chatBtn.classList.add('has-chat-history');
     } else {
       chatBtn.classList.remove('has-chat-history');
+    }
+  }
+
+  formatUserFriendlyError(errorMessage, type = 'general') {
+    // Check for daily limit errors
+    if (errorMessage.includes('Daily limit reached') || errorMessage.includes('Daily chat limit reached')) {
+      if (type === 'chat') {
+        return `🔒 You've reached your daily chat limit! Free users get 1 chat per day. <a href="https://www.clicksummary.com/pricing" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Upgrade to Premium</a> for unlimited AI chat conversations.`;
+      } else {
+        return `🔒 You've reached your daily summary limit! Free users get 5 summaries per day. <a href="https://www.clicksummary.com/pricing" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Upgrade to Premium</a> for unlimited summaries.`;
+      }
+    }
+    
+    // Check for authentication errors
+    if (errorMessage.includes('Authentication failed') || errorMessage.includes('Please sign in')) {
+      return `🔑 Please sign in to use ClickSummary. <a href="https://www.clicksummary.com/signin" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Sign in here</a> to get started.`;
+    }
+    
+    // Check for subscription required errors
+    if (errorMessage.includes('Subscription required') || errorMessage.includes('upgrade your plan')) {
+      return `⭐ Premium subscription required for this feature. <a href="https://www.clicksummary.com/pricing" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Upgrade now</a> to unlock all features.`;
+    }
+    
+    // Check for rate limit errors (server-side)
+    if (errorMessage.includes('Rate limit exceeded')) {
+      return `⏰ Our servers are busy right now. Please wait a moment and try again.`;
+    }
+    
+    // Check for network/connection errors
+    if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network') || errorMessage.includes('timeout')) {
+      return `🌐 Connection issue detected. Please check your internet connection and try again.`;
+    }
+    
+    // Check for transcript-related errors
+    if (errorMessage.includes('transcript') || errorMessage.includes('captions')) {
+      return `📝 This video doesn't have transcripts or captions available. ClickSummary needs captions to generate summaries.`;
+    }
+    
+    // Default user-friendly error for any other errors
+    if (type === 'chat') {
+      return `💬 Unable to process your question right now. Please try asking something else or try again in a moment.`;
+    } else {
+      return `📄 Unable to generate summary right now. Please try again in a moment or try a different video.`;
     }
   }
 

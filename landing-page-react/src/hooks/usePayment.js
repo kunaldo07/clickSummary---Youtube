@@ -18,13 +18,14 @@ export const PaymentProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
+  // Simplified for single monthly plan
   const subscribeToPremium = async () => {
     if (!user) {
       toast.error('Please sign in to subscribe');
       return { success: false, error: 'Not authenticated' };
     }
 
-    if (user.subscription && user.subscription.status === 'active' && user.subscription.plan === 'premium') {
+    if (user.subscription && user.subscription.status === 'active' && user.subscription.plan === 'monthly') {
       toast.error('You are already subscribed to Premium!');
       return { success: false, error: 'Already subscribed' };
     }
@@ -33,11 +34,11 @@ export const PaymentProvider = ({ children }) => {
       setLoading(true);
       setPaymentLoading(true);
 
-      // Create subscription on backend
+      // Create subscription on backend - simplified for single plan
       const response = await paymentService.createSubscription({
-        plan: 'premium',
-        amount: 1000, // $10 in cents
-        currency: 'USD',
+        planType: 'monthly', // Always monthly since it's the only paid plan
+        amount: 80000, // ₹800 in paise (to match Razorpay plan)
+        currency: 'INR', // Matches Razorpay plan currency
         interval: 'month',
         interval_count: 1
       });
@@ -63,17 +64,46 @@ export const PaymentProvider = ({ children }) => {
   const initiateRazorpayPayment = (subscription, order) => {
     return new Promise((resolve) => {
       const options = {
-        key: process.env.REACT_APP_RAZORPAY_KEY || 'rzp_test_your_key_here',
-        amount: order.amount,
-        currency: order.currency,
-        name: 'ClickSummary',
-        description: 'Premium Monthly Subscription - $10/month',
-        order_id: order.id,
+        key: process.env.REACT_APP_RAZORPAY_KEY_ID,
         subscription_id: subscription.id,
-        handler: async function(response) {
+        amount: subscription.amount,
+        currency: subscription.currency,
+        name: 'ClickSummary',
+        description: 'Premium Monthly Subscription - ₹800/month',
+        // Removed order_id: order.id - not needed for subscriptions and order can be null
+        handler: async function (response) {
           console.log('Payment successful:', response);
-          const result = await verifyPayment(response);
-          resolve(result);
+          
+          try {
+            // Verify payment with backend
+            const verificationResult = await paymentService.verifyPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_subscription_id: response.razorpay_subscription_id,
+              razorpay_signature: response.razorpay_signature
+            });
+
+            if (verificationResult.success) {
+              // Update user subscription status
+              await updateUserSubscription({
+                isActive: true,
+                planType: 'monthly',
+                status: 'active'
+              });
+              
+              // Refresh user data
+              await refreshUserData();
+              
+              toast.success('🎉 Welcome to Premium! You now have unlimited access.');
+              resolve({ success: true, subscription: verificationResult.subscription });
+            } else {
+              toast.error('Payment verification failed. Please contact support.');
+              resolve({ success: false, error: 'Payment verification failed' });
+            }
+          } catch (verificationError) {
+            console.error('Payment verification error:', verificationError);
+            toast.error('Payment verification failed. Please contact support.');
+            resolve({ success: false, error: verificationError.message });
+          }
         },
         prefill: {
           name: user.name,
@@ -82,112 +112,28 @@ export const PaymentProvider = ({ children }) => {
         },
         notes: {
           user_id: user.id,
-          plan: 'premium',
-          duration: '1 month'
+          plan_type: 'monthly'
         },
         theme: {
-          color: '#8b5cf6',
-          backdrop_color: 'rgba(0, 0, 0, 0.8)'
+          color: '#8b5cf6'
         },
         modal: {
-          backdropclose: false,
-          escape: false,
           ondismiss: function() {
-            console.log('Payment modal dismissed by user');
-            toast('Payment was cancelled. You can try again anytime!', {
-              icon: 'ℹ️'
-            });
-            resolve({ success: false, cancelled: true });
+            console.log('Payment modal dismissed');
+            setPaymentLoading(false);
+            resolve({ success: false, error: 'Payment cancelled by user' });
           }
-        },
-        retry: {
-          enabled: true,
-          max_count: 3
         }
       };
 
-      const razorpay = new window.Razorpay(options);
-
-      razorpay.on('payment.failed', function(response) {
-        console.error('Payment failed:', response.error);
-        toast.error(`Payment failed: ${response.error.description || 'Please try again.'}`);
-        resolve({ success: false, error: response.error });
-      });
-
-      // Small delay for better UX
-      setTimeout(() => {
+      if (window.Razorpay) {
+        const razorpay = new window.Razorpay(options);
         razorpay.open();
-      }, 500);
+      } else {
+        toast.error('Payment system not loaded. Please refresh and try again.');
+        resolve({ success: false, error: 'Razorpay not loaded' });
+      }
     });
-  };
-
-  const verifyPayment = async (paymentResponse) => {
-    try {
-      setPaymentLoading(true);
-      toast.loading('Verifying your payment...', { id: 'payment-verify' });
-
-      const response = await paymentService.verifyPayment({
-        razorpay_payment_id: paymentResponse.razorpay_payment_id,
-        razorpay_order_id: paymentResponse.razorpay_order_id,
-        razorpay_signature: paymentResponse.razorpay_signature,
-        subscription_id: paymentResponse.razorpay_subscription_id
-      });
-
-      if (response.success) {
-        // Update user subscription
-        updateUserSubscription(response.subscription);
-
-        toast.dismiss('payment-verify');
-        
-        // Show success with celebration
-        toast.success('🎉 Welcome to Premium! Your subscription is now active.', {
-          duration: 6000
-        });
-
-        // Refresh user data
-        setTimeout(() => {
-          refreshUserData();
-        }, 1000);
-
-        return { success: true, subscription: response.subscription };
-      } else {
-        throw new Error(response.message || 'Payment verification failed');
-      }
-    } catch (error) {
-      console.error('Payment verification error:', error);
-      toast.dismiss('payment-verify');
-      toast.error(`Payment verification failed. Please contact support with payment ID: ${paymentResponse.razorpay_payment_id}`);
-      return { success: false, error: error.message };
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
-  const cancelSubscription = async () => {
-    try {
-      setLoading(true);
-      toast.loading('Cancelling subscription...', { id: 'cancel-sub' });
-
-      const response = await paymentService.cancelSubscription();
-
-      if (response.success) {
-        updateUserSubscription(response.subscription);
-        
-        toast.dismiss('cancel-sub');
-        toast.success('Subscription cancelled. You will have access to premium features until the end of your billing cycle.');
-        
-        return { success: true, subscription: response.subscription };
-      } else {
-        throw new Error(response.message || 'Failed to cancel subscription');
-      }
-    } catch (error) {
-      console.error('Cancellation error:', error);
-      toast.dismiss('cancel-sub');
-      toast.error('Failed to cancel subscription. Please contact support.');
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
   };
 
   const getSubscriptionStatus = async () => {
@@ -195,17 +141,120 @@ export const PaymentProvider = ({ children }) => {
       const response = await paymentService.getSubscriptionStatus();
       return response;
     } catch (error) {
-      console.error('Failed to get subscription status:', error);
+      console.error('Get subscription status error:', error);
       return { success: false, error: error.message };
     }
   };
 
+  const cancelSubscription = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await paymentService.cancelSubscription();
+      
+      if (response.success) {
+        // Update user subscription status
+        await updateUserSubscription({
+          isActive: false,
+          planType: 'free',
+          status: 'cancelled'
+        });
+        
+        // Refresh user data
+        await refreshUserData();
+        
+        toast.success('Subscription cancelled successfully');
+        return { success: true };
+      } else {
+        throw new Error(response.message || 'Failed to cancel subscription');
+      }
+    } catch (error) {
+      console.error('Cancel subscription error:', error);
+      toast.error('Failed to cancel subscription. Please try again.');
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPaymentHistory = async () => {
+    try {
+      const response = await paymentService.getPaymentHistory();
+      return response;
+    } catch (error) {
+      console.error('Get payment history error:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const downloadInvoice = async (paymentId) => {
+    try {
+      const response = await paymentService.downloadInvoice(paymentId);
+      return response;
+    } catch (error) {
+      console.error('Download invoice error:', error);
+      toast.error('Failed to download invoice');
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Helper function to check if user has active subscription
+  const hasActiveSubscription = () => {
+    return user?.subscription?.isActive && user?.subscription?.planType === 'monthly';
+  };
+
+  // Helper function to get current plan details
+  const getCurrentPlan = () => {
+    if (hasActiveSubscription()) {
+      return {
+        type: 'monthly',
+        name: 'Premium',
+        price: '₹800',
+        period: 'per month',
+        features: [
+          'Unlimited summaries',
+          'Unlimited AI chat',
+          'All formats',
+          'Priority support',
+          'Export summaries',
+          'Custom formats'
+        ]
+      };
+    } else {
+      return {
+        type: 'free',
+        name: 'Free',
+        price: '₹0',
+        period: 'forever',
+        features: [
+          '5 summaries per day',
+          '1 AI chat per day',
+          'Basic formats only'
+        ]
+      };
+    }
+  };
+
   const value = {
+    // State
     loading,
+    setLoading,
     paymentLoading,
-    subscribeToPremium,
+    setPaymentLoading,
+    
+    // Actions
+    subscribeToPremium, // Simplified - only monthly plan
+    getSubscriptionStatus,
     cancelSubscription,
-    getSubscriptionStatus
+    getPaymentHistory,
+    downloadInvoice,
+    
+    // Helpers
+    hasActiveSubscription,
+    getCurrentPlan,
+    
+    // User data
+    user
   };
 
   return (
