@@ -31,7 +31,7 @@ async function testOpenAI() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-nano',
         messages: [{ role: 'user', content: 'Say "API test successful"' }],
         max_tokens: 10
       }),

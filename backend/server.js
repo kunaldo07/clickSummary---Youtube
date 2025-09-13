@@ -187,7 +187,7 @@ app.get('/api/health', (req, res) => {
     status: 'healthy', 
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    model: process.env.OPENAI_MODEL || 'gpt-5-nano',
     caching: process.env.ENABLE_SMART_CACHING === 'true' ? 'enabled' : 'disabled',
     allowedOrigins: allowedOrigins.length,
     mongodb: mongodbConnected ? 'connected' : 'disconnected'
@@ -230,7 +230,7 @@ app.listen(PORT, () => {
   console.log('=====================================');
   console.log(`🌐 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🤖 AI Model: ${process.env.OPENAI_MODEL || 'gpt-4o-mini'}`);
+  console.log(`🤖 AI Model: ${process.env.OPENAI_MODEL || 'gpt-5-nano'}`);
   console.log(`💰 Cost limit: $${process.env.MAX_MONTHLY_COST_PER_USER || '2.50'}/user/month`);
   console.log(`📊 Caching: ${process.env.ENABLE_SMART_CACHING === 'true' ? 'enabled' : 'disabled'}`);
   console.log(`🌐 CORS: ${allowedOrigins.length} allowed origins`);

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
+import config from '../../config/environment';
 import Avatar from './Avatar';
 
 const NavContainer = styled.nav`
@@ -39,6 +40,18 @@ const Brand = styled(Link)`
 
   &:hover {
     transform: scale(1.02);
+  }
+`;
+
+const LogoImage = styled.img`
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.3));
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
   }
 `;
 
@@ -328,7 +341,10 @@ const Navigation = () => {
     <NavContainer>
       <NavContent>
         <Brand to="/">
-          <BrandIcon>🎥</BrandIcon>
+          <LogoImage 
+            src="/Click_Summary_Logo_Updated.png" 
+            alt="ClickSummary Logo"
+          />
           <span>ClickSummary</span>
         </Brand>
 
@@ -391,7 +407,7 @@ const Navigation = () => {
 
                     <DropdownItem 
                       as="a" 
-                      href="https://chrome.google.com/webstore" 
+                      href={`https://chrome.google.com/webstore/detail/${config.EXTENSION_ID}`}
                       target="_blank"
                       onClick={() => setIsDropdownOpen(false)}
                     >

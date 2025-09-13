@@ -2,7 +2,8 @@
   "manifest_version": 3,
   "name": "ClickSummary",
   "version": "1.0.0",
-  "description": "Extract transcripts from YouTube videos and generate AI-powered summaries",
+  "description": "Transform YouTube videos into intelligent summaries with AI-powered insights. Save time and learn faster.",
+  "author": "ClickSummary Team",
   "homepage_url": "https://www.clicksummary.com",
   "privacy_policy": "https://www.clicksummary.com/privacy",
   "permissions": [
@@ -38,21 +39,16 @@
     }
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
-    "default_title": "YouTube Summarizer - Ready to use!",
+    "default_title": "ClickSummary - Ready to use!",
     "default_popup": "popup.html"
   },
   "icons": {
-    "16": "icon16.svg",
-    "48": "icon48.svg",
-    "128": "icon128.svg"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["auth-bridge.html"],
-      "matches": ["https://www.youtube.com/*"]
-    }
-  ]
+    "16": "icon16.png",
+    "48": "icon48.png", 
+    "128": "icon128.png"
+  }
 }

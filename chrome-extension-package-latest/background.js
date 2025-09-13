@@ -1,6 +1,6 @@
 // YouTube Summarizer Background Script - Multi-Environment Support
 
-// Environment detection and configuration for service workers
+// Environment detection for unpublished extensions (localhost + production)
 let environmentCache = null;
 
 const detectEnvironment = async () => {
@@ -8,9 +8,9 @@ const detectEnvironment = async () => {
     return environmentCache;
   }
   
-  console.log('🔍 Detecting environment...');
+  console.log('🔍 Detecting environment for unpublished extension...');
   
-  // Check stored preference first
+  // First check if user has manually set a preference
   try {
     const stored = await chrome.storage.local.get(['environment_preference']);
     if (stored.environment_preference) {
@@ -22,11 +22,11 @@ const detectEnvironment = async () => {
     console.log('⚠️ Could not read stored environment preference:', error);
   }
   
-  // Try to ping localhost API with very short timeout
+  // Test if localhost backend is accessible
   try {
-    console.log('🔍 Testing localhost API accessibility...');
+    console.log('🔍 Testing localhost API (http://localhost:3001)...');
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1000); // 1 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
     
     const response = await fetch('http://localhost:3001/api/health', {
       method: 'GET',
@@ -37,16 +37,18 @@ const detectEnvironment = async () => {
     clearTimeout(timeoutId);
     
     if (response.ok) {
-      console.log('✅ Localhost API accessible - using DEVELOPMENT mode');
+      console.log('✅ Localhost backend accessible - DEVELOPMENT MODE');
       environmentCache = { isDevelopment: true, isProduction: false };
       return environmentCache;
+    } else {
+      console.log('❌ Localhost backend responded with error:', response.status);
     }
   } catch (error) {
-    console.log('❌ Localhost API not accessible:', error.message);
+    console.log('❌ Localhost backend not accessible:', error.message);
   }
   
-  // Default to production
-  console.log('🌐 Using PRODUCTION mode');
+  // If localhost fails, assume production environment
+  console.log('🌐 Localhost not available - PRODUCTION MODE');
   environmentCache = { isDevelopment: false, isProduction: true };
   return environmentCache;
 };
@@ -55,26 +57,26 @@ const getAPIBaseURL = async () => {
   const env = await detectEnvironment();
   
   if (env.isDevelopment) {
-    console.log('🏠 Using localhost API');
+    console.log('🏠 Using localhost backend');
     return 'http://localhost:3001/api';
   } else {
-    console.log('🌐 Using production API');
+    console.log('🌐 Using production backend');
     return 'https://api.clicksummary.com/api';
   }
 };
 
-// Initialize CONFIG asynchronously with better error handling
+// Initialize CONFIG with async environment detection
 let CONFIG = {
-  API_BASE_URL: 'http://localhost:3001/api', // Default to localhost
+  API_BASE_URL: 'http://localhost:3001/api', // Default fallback
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
   environment: { isDevelopment: true, isProduction: false }
 };
 
-// Initialize environment detection with retry
+// Initialize environment detection
 (async () => {
   try {
-    console.log('🚀 Initializing background script environment...');
+    console.log('🚀 Initializing extension environment...');
     
     const environment = await detectEnvironment();
     const apiBaseURL = await getAPIBaseURL();
@@ -86,21 +88,13 @@ let CONFIG = {
       environment
     };
     
-    console.log('✅ Background script initialized successfully');
-    console.log(`🌍 Environment: ${CONFIG.environment.isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'}`);
-    console.log(`🔗 API Base URL: ${CONFIG.API_BASE_URL}`);
+    console.log('✅ Environment detection complete');
+    console.log(`🌍 Mode: ${CONFIG.environment.isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'}`);
+    console.log(`🔗 API URL: ${CONFIG.API_BASE_URL}`);
     
   } catch (error) {
-    console.error('❌ Background script initialization failed:', error);
-    console.log('🔄 Using localhost fallback configuration');
-    
-    // Fallback to localhost if detection fails
-    CONFIG = {
-      API_BASE_URL: 'http://localhost:3001/api',
-      RETRY_ATTEMPTS: 3,
-      RETRY_DELAY: 1000,
-      environment: { isDevelopment: true, isProduction: false }
-    };
+    console.error('❌ Environment detection failed:', error);
+    console.log('🔄 Using localhost fallback');
   }
 })();
 
@@ -388,7 +382,7 @@ async function callOpenAI(transcript, apiKey) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-nano',
         messages: [
           {
             role: 'system',
@@ -450,7 +444,7 @@ async function handleAdvancedSummarization(requestData) {
       throw new Error('Video ID is required');
     }
 
-    console.log('🚀 Using secure gpt-4o-mini backend for summarization');
+    console.log('🚀 Using secure gpt-5-nano backend for summarization');
     console.log('📊 Request data:', {
       videoId: requestData.videoId,
       type: requestData.type,
@@ -465,7 +459,7 @@ async function handleAdvancedSummarization(requestData) {
       isProduction: CONFIG.environment?.isProduction
     });
 
-    // Call secure backend with gpt-4o-mini
+    // Call secure backend with gpt-5-nano
     const response = await callSecureBackend('/summarizer/summarize', {
       transcript: requestData.transcript,
       videoId: requestData.videoId,
@@ -474,7 +468,7 @@ async function handleAdvancedSummarization(requestData) {
       format: requestData.format
     }, userToken);
 
-    console.log('✅ Summary generated successfully with gpt-4o-mini');
+    console.log('✅ Summary generated successfully with gpt-5-nano');
     
     if (response.metadata) {
       console.log('📈 Cost info:', {
@@ -521,7 +515,7 @@ async function handleTimestampedSummarization(requestData) {
       throw new Error('Please sign in to use the summarizer');
     }
 
-    console.log('🚀 Using secure gpt-4o-mini backend for timestamped summarization');
+    console.log('🚀 Using secure gpt-5-nano backend for timestamped summarization');
     console.log('📊 Request data:', {
       videoId: requestData.videoId,
       type: requestData.type,
@@ -552,14 +546,13 @@ async function handleChatQuery(requestData) {
       throw new Error('Please sign in to use the chat feature');
     }
 
-    console.log('💬 Processing chat query:', requestData.query);
+    console.log('💬 Processing chat query:', requestData.question);
 
     // Call secure backend for chat queries
     const response = await callSecureBackend('/summarizer/chat', {
-      query: requestData.query,
-      context: requestData.context,
-      videoId: requestData.videoId,
-      conversationId: requestData.conversationId
+      question: requestData.question,
+      transcript: requestData.transcript,
+      videoId: requestData.videoId
     }, userToken);
 
     console.log('✅ Chat response generated successfully');
@@ -608,7 +601,16 @@ async function callSecureBackend(endpoint, data, userToken) {
         if (response.status === 401) {
           throw new Error('Authentication failed. Please sign in again.');
         } else if (response.status === 429) {
-          throw new Error(errorData.error || 'Rate limit exceeded. Please try again later.');
+          // Handle usage limit errors
+          if (errorData.code === 'DAILY_LIMIT_EXCEEDED') {
+            const details = errorData.details || {};
+            throw new Error(`Daily limit reached! You've used ${details.used}/${details.limit} summaries today. ${details.planType === 'free' ? 'Upgrade to Premium for unlimited summaries.' : 'Limit resets tomorrow.'}`);
+          } else if (errorData.code === 'DAILY_CHAT_LIMIT_EXCEEDED') {
+            const details = errorData.details || {};
+            throw new Error(`Daily chat limit reached! You've used ${details.used}/${details.limit} chat queries today. ${details.planType === 'free' ? 'Upgrade to Premium for unlimited chat.' : 'Limit resets tomorrow.'}`);
+          } else {
+            throw new Error(errorData.error || 'Rate limit exceeded. Please try again later.');
+          }
         } else if (response.status === 403) {
           throw new Error('Subscription required. Please upgrade your plan.');
         } else {

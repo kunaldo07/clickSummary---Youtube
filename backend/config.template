@@ -15,8 +15,8 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 
 # OpenAI GPT-4o Mini Configuration
 OPENAI_API_KEY=sk-your_openai_api_key_here
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_BACKUP_MODEL=gpt-4o-mini
+OPENAI_MODEL=gpt-5-nano
+OPENAI_BACKUP_MODEL=gpt-5-nano
 OPENAI_MAX_TOKENS_SHORT=120
 OPENAI_MAX_TOKENS_DETAILED=200
 OPENAI_MAX_TOKENS_CHAT=150

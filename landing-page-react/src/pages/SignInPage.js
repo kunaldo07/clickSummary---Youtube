@@ -51,12 +51,16 @@ const Logo = styled.div`
   margin-bottom: 32px;
 `;
 
-const LogoIcon = styled.span`
-  font-size: 2.5rem;
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+const LogoIcon = styled.img`
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.3));
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
 `;
 
 const LogoText = styled.span`
@@ -292,7 +296,10 @@ const SignInPage = () => {
         transition={{ duration: 0.5, ease: "easeOut" }}
       >
         <Logo>
-          <LogoIcon>🎥</LogoIcon>
+        <LogoIcon 
+            src="/Click_Summary_Logo_Updated.png" 
+            alt="ClickSummary Logo"
+          />
           <LogoText>ClickSummary</LogoText>
         </Logo>
 

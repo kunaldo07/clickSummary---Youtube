@@ -27,7 +27,7 @@ const costTrackingSchema = new mongoose.Schema({
   model: {
     type: String,
     required: true,
-    default: 'gpt-4o-mini'
+    default: 'gpt-5-nano'
   },
   inputTokens: {
     type: Number,

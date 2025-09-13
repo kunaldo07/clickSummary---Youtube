@@ -23,8 +23,8 @@ const openai = new OpenAI({
 
 // Configuration
 const CONFIG = {
-  PRIMARY_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-  BACKUP_MODEL: process.env.OPENAI_BACKUP_MODEL || 'gpt-4o-mini',
+  PRIMARY_MODEL: process.env.OPENAI_MODEL || 'gpt-5-nano',
+  BACKUP_MODEL: process.env.OPENAI_BACKUP_MODEL || 'gpt-5-nano',
   MAX_TOKENS: {
     short: parseInt(process.env.OPENAI_MAX_TOKENS_SHORT) || 120,
     detailed: parseInt(process.env.OPENAI_MAX_TOKENS_DETAILED) || 200,

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
+import config from '../../config/environment';
+// Logo import removed
 
 const FooterContainer = styled.footer`
   background: #1f2937;
@@ -38,12 +40,16 @@ const BrandHeader = styled.div`
   gap: 12px;
 `;
 
-const BrandIcon = styled.span`
-  font-size: 2rem;
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+const LogoImage = styled.img`
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.3));
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
 `;
 
 const BrandText = styled.span`
@@ -131,7 +137,10 @@ const Footer = () => {
         <FooterContent>
           <Brand>
             <BrandHeader>
-              <BrandIcon>🎥</BrandIcon>
+              <LogoImage 
+                src="/Click_Summary_Logo_Updated.png" 
+                alt="ClickSummary Logo"
+              />
               <BrandText>ClickSummary</BrandText>
             </BrandHeader>
             <BrandDescription>
@@ -144,7 +153,7 @@ const Footer = () => {
             <SectionTitle>Product</SectionTitle>
             <FooterLink to="/">Home</FooterLink>
             <FooterLink to="/pricing">Pricing</FooterLink>
-            <ExternalLink href="https://chrome.google.com/webstore" target="_blank">
+            <ExternalLink href={`https://chrome.google.com/webstore/detail/${config.EXTENSION_ID}`} target="_blank">
               Chrome Extension
             </ExternalLink>
           </FooterSection>

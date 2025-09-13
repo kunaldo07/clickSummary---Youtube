@@ -3,6 +3,8 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import config from '../config/environment';
+import { redirectToExtension } from '../utils/extensionHelpers';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -224,9 +226,8 @@ const HomePage = () => {
               <>
                 <PrimaryButton to="/pricing">Upgrade to Premium</PrimaryButton>
                 <SecondaryButton 
-                  as="a" 
-                  href="https://chrome.google.com/webstore" 
-                  target="_blank"
+                  as="button"
+                  onClick={redirectToExtension}
                 >
                   Add to Chrome
                 </SecondaryButton>
