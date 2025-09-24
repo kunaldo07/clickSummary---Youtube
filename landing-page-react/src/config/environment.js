@@ -30,7 +30,7 @@ const getConfig = () => {
   } else {
     return {
       API_URL: process.env.REACT_APP_API_URL || 'https://api.clicksummary.com/api',
-      WEBSITE_URL: process.env.REACT_APP_WEBSITE_URL || 'https://www.clicksummary.com',
+      WEBSITE_URL: process.env.REACT_APP_WEBSITE_URL || 'https://clicksummary.com',
       GOOGLE_CLIENT_ID: process.env.REACT_APP_GOOGLE_CLIENT_ID || '837073239595-d82jmt90dcg6pg1suilajc7rl2auf2b8.apps.googleusercontent.com',
       EXTENSION_ID: process.env.REACT_APP_EXTENSION_ID || 'cijajcbmplbiidgaeooocnfhjhcahnil',
       DEBUG: false,

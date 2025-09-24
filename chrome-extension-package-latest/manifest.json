@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ClickSummary",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Transform YouTube videos into intelligent summaries with AI-powered insights. Save time and learn faster.",
   "author": "ClickSummary Team",
   "homepage_url": "https://www.clicksummary.com",
@@ -14,9 +14,6 @@
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
-    "https://api.openai.com/*",
-    "http://localhost:3001/*",
-    "http://localhost:3002/*",
     "https://api.clicksummary.com/*",
     "https://www.clicksummary.com/*",
     "https://clicksummary.com/*"
@@ -30,7 +27,6 @@
     },
     {
       "matches": [
-        "http://localhost:3002/*",
         "https://www.clicksummary.com/*",
         "https://clicksummary.com/*"
       ],
@@ -48,7 +44,7 @@
   },
   "icons": {
     "16": "icon16.png",
-    "48": "icon48.png", 
+    "48": "icon48.png",
     "128": "icon128.png"
   }
 }

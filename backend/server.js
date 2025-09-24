@@ -58,16 +58,16 @@ const getAllowedOrigins = () => {
     
     // ALSO allow production origins during development for testing
     origins.push(
-      'https://www.clicksummary.com',
-      'https://clicksummary.com'
+      'https://clicksummary.com',
+      'https://www.clicksummary.com'
     );
   }
   
   if (isProduction) {
     // Production origins
     origins.push(
-      'https://www.clicksummary.com',
-      'https://clicksummary.com'
+      'https://clicksummary.com',
+      'https://www.clicksummary.com'
     );
   }
   

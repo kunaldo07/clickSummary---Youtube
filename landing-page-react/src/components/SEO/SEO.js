@@ -10,8 +10,26 @@ const SEO = ({
   type = "website",
   twitterHandle = "@clicksummary"
 }) => {
+  // Fix: Use consistent production URL without www
+  const getCanonicalUrl = () => {
+    if (typeof window !== 'undefined') {
+      // In browser, determine canonical URL
+      const currentHost = window.location.host;
+      const currentProtocol = window.location.protocol;
+      
+      // If we're on the www version, canonical should point to non-www
+      if (currentHost === 'www.clicksummary.com') {
+        return `${currentProtocol}//clicksummary.com${url}`;
+      }
+      // Otherwise use the current origin
+      return `${window.location.origin}${url}`;
+    }
+    // Default for SSR/build time - use non-www
+    return `https://clicksummary.com${url}`;
+  };
+
+  const canonicalUrl = getCanonicalUrl();
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://clicksummary.com';
-  const fullUrl = `${siteUrl}${url}`;
   const fullImageUrl = image.startsWith('http') ? image : `${siteUrl}${image}`;
 
   return (
@@ -22,12 +40,12 @@ const SEO = ({
       <meta name="keywords" content={keywords} />
       <meta name="author" content="ClickSummary" />
       
-      {/* Canonical URL */}
-      <link rel="canonical" href={fullUrl} />
+      {/* Canonical URL - Always point to non-www version */}
+      <link rel="canonical" href={canonicalUrl} />
       
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={type} />
-      <meta property="og:url" content={fullUrl} />
+      <meta property="og:url" content={canonicalUrl} />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={fullImageUrl} />
@@ -36,7 +54,7 @@ const SEO = ({
       
       {/* Twitter */}
       <meta property="twitter:card" content="summary_large_image" />
-      <meta property="twitter:url" content={fullUrl} />
+      <meta property="twitter:url" content={canonicalUrl} />
       <meta property="twitter:title" content={title} />
       <meta property="twitter:description" content={description} />
       <meta property="twitter:image" content={fullImageUrl} />
@@ -61,7 +79,7 @@ const SEO = ({
           "@type": "WebApplication",
           "name": "ClickSummary",
           "description": description,
-          "url": siteUrl,
+          "url": "https://clicksummary.com",
           "applicationCategory": "ProductivityApplication",
           "operatingSystem": "Chrome Browser",
           "offers": {

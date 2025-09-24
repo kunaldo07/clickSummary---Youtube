@@ -1,0 +1,10 @@
+# Netlify redirects file
+# Redirect www to non-www (301 permanent redirect)
+https://www.clicksummary.com/* https://clicksummary.com/:splat 301!
+
+# Ensure HTTPS redirect
+http://clicksummary.com/* https://clicksummary.com/:splat 301!
+http://www.clicksummary.com/* https://clicksummary.com/:splat 301!
+
+# SPA fallback - all other routes go to index.html
+/*    /index.html   200

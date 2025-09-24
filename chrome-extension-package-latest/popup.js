@@ -396,7 +396,7 @@ async function updatePlanDetails(user, token) {
     
     if (planType === 'free') {
       planName.textContent = 'Free Plan';
-      planStatus.textContent = '7-Day Trial';
+      planStatus.textContent = 'Forever';
       planStatus.className = 'plan-badge trial';
       upgradeBtn.classList.remove('hidden');
       

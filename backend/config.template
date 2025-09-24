@@ -43,7 +43,7 @@ CLIENT_URL=http://localhost:3002
 FRONTEND_DOMAIN=localhost:3002
 
 # Production (uncomment and update for production)
-# CLIENT_URL=https://www.clicksummary.com
+# CLIENT_URL=https://clicksummary.com
 # FRONTEND_DOMAIN=clicksummary.com
 
 # Chrome Extension
