@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { createGlobalStyle } from 'styled-components';
 import { Toaster } from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { HelmetProvider } from 'react-helmet-async';
 
 // Context Providers
 import { AuthProvider } from './hooks/useAuth';
@@ -20,6 +21,7 @@ const HomePage = lazy(() => import('./pages/HomePage'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const SignInPage = lazy(() => import('./pages/SignInPage'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 // Global Styles
 const GlobalStyle = createGlobalStyle`
@@ -139,10 +141,11 @@ const pageVariants = {
 function App() {
   return (
     <ErrorBoundary>
-      <GlobalStyle />
-      <AuthProvider>
-        <PaymentProvider>
-          <Router>
+      <HelmetProvider>
+        <GlobalStyle />
+        <AuthProvider>
+          <PaymentProvider>
+            <Router>
             <div className="App">
               <Navigation />
               
@@ -158,7 +161,8 @@ function App() {
                     <Route path="/pricing" element={<PricingPage />} />
                     <Route path="/signin" element={<SignInPage />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
-                    <Route path="*" element={<HomePage />} />
+                    <Route path="/404" element={<NotFoundPage />} />
+                    <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </Suspense>
               </motion.main>
@@ -196,6 +200,7 @@ function App() {
           </Router>
         </PaymentProvider>
       </AuthProvider>
+      </HelmetProvider>
     </ErrorBoundary>
   );
 }

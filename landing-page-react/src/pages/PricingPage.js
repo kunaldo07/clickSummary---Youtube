@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { usePayment } from '../hooks/usePayment';
 import toast from 'react-hot-toast';
+import SEO from '../components/SEO';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -342,7 +343,15 @@ const PricingPage = () => {
   ];
 
   return (
-    <PageContainer>
+    <>
+      <SEO
+        title="ClickSummary Pricing - Free & Premium AI Video Summary Plans"
+        description="Choose the perfect plan for your YouTube summary needs. Start free with 5 summaries per day, or upgrade to Premium for unlimited AI-powered video summaries and chat."
+        keywords="ClickSummary pricing, AI video summary cost, YouTube summary plans, free video summary, premium features"
+        url="/pricing"
+        type="website"
+      />
+      <PageContainer>
       <BackgroundPattern />
       <FloatingElements />
 
@@ -425,6 +434,7 @@ const PricingPage = () => {
         </Container>
       </PlansSection>
     </PageContainer>
+    </>
   );
 };
 

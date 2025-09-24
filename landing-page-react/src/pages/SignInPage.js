@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { apiService } from '../services/apiService';
 import toast from 'react-hot-toast';
+import SEO from '../components/SEO';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -289,7 +290,15 @@ const SignInPage = () => {
   };
 
   return (
-    <PageContainer>
+    <>
+      <SEO
+        title="Sign In to ClickSummary - Access Your AI Video Summaries"
+        description="Sign in to ClickSummary with Google to access your AI-powered video summaries, interactive chat features, and premium account benefits."
+        keywords="ClickSummary login, sign in, Google OAuth, video summary account, AI chat access"
+        url="/signin"
+        type="website"
+      />
+      <PageContainer>
       <SignInCard
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -347,6 +356,7 @@ const SignInPage = () => {
         </Features>
       </SignInCard>
     </PageContainer>
+    </>
   );
 };
 

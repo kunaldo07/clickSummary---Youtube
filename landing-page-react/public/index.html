@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" itemscope itemtype="https://schema.org/WebApplication">
   <head>
     <meta charset="utf-8" />
     <!-- ClickSummary Favicon Links -->
@@ -8,28 +8,62 @@
     <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/Click_Summary_Logo_Updated.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="%PUBLIC_URL%/Click_Summary_Logo_Updated.png" />
     
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="theme-color" content="#8b5cf6" />
+    <meta name="msapplication-TileColor" content="#8b5cf6" />
+    <meta name="msapplication-config" content="%PUBLIC_URL%/browserconfig.xml" />
+    <!-- Default meta tags (will be overridden by React Helmet) -->
     <meta
       name="description"
       content="Transform YouTube videos into intelligent summaries with AI-powered insights. Save time and learn faster with our Chrome extension."
     />
+    
+    <!-- Security -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+    
+    <!-- Manifest -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     
-    <!-- Google Fonts -->
+    <!-- Preconnect to external domains for performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://checkout.razorpay.com">
+    
+    <!-- Google Fonts with font-display: swap for performance -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Google OAuth: Using manual flow to avoid CSP/FedCM issues -->
-    
     <!-- Razorpay Checkout -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
     
+    <!-- Default title (will be overridden by React Helmet) -->
     <title>ClickSummary - AI-Powered Video Summaries</title>
     
+    <!-- Structured data for better SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "ClickSummary",
+      "description": "Transform YouTube videos into intelligent summaries with AI-powered insights. Save time and learn faster with our Chrome extension.",
+      "url": "https://clicksummary.com",
+      "applicationCategory": "ProductivityApplication",
+      "operatingSystem": "Chrome Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "ClickSummary",
+        "url": "https://clicksummary.com"
+      }
+    }
+    </script>
+    
     <style>
-      /* Global Reset and Base Styles */
+      /* Critical CSS for performance */
       * {
         margin: 0;
         padding: 0;
@@ -49,7 +83,7 @@
         min-height: 100vh;
       }
       
-      /* Loading Spinner */
+      /* Loading Spinner - Critical CSS */
       .app-loading {
         display: flex;
         justify-content: center;
@@ -71,15 +105,43 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+      
+      /* Prevent FOUC */
+      .font-loading {
+        visibility: hidden;
+      }
+      
+      .fonts-loaded .font-loading {
+        visibility: visible;
+      }
     </style>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <noscript>
+      <div style="padding: 40px; text-align: center; font-family: Arial, sans-serif;">
+        <h1>JavaScript Required</h1>
+        <p>You need to enable JavaScript to run ClickSummary. Please enable JavaScript in your browser settings and reload the page.</p>
+      </div>
+    </noscript>
     <div id="root">
       <!-- Loading state before React loads -->
       <div class="app-loading">
         <div class="loading-spinner"></div>
       </div>
     </div>
+    
+    <!-- Web Vitals tracking -->
+    <script>
+      // Track page load performance
+      window.addEventListener('load', function() {
+        if ('performance' in window) {
+          setTimeout(function() {
+            const perfData = window.performance.timing;
+            const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
+            console.log('Page load time:', pageLoadTime + 'ms');
+          }, 0);
+        }
+      });
+    </script>
   </body>
 </html>

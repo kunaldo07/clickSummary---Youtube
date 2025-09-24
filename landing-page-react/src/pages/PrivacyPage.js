@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import SEO from '../components/SEO';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -164,7 +165,15 @@ const ContactEmail = styled.a`
 
 const PrivacyPage = () => {
   return (
-    <Container>
+    <>
+      <SEO
+        title="Privacy Policy - ClickSummary Data Protection & Security"
+        description="Learn how ClickSummary protects your privacy and data. Comprehensive privacy policy covering data collection, usage, and security measures for our AI video summary service."
+        keywords="ClickSummary privacy policy, data protection, user privacy, AI video summary privacy, GDPR compliance"
+        url="/privacy"
+        type="article"
+      />
+      <Container>
       <ContentContainer>
         <Header>
           <HeaderTitle>
@@ -356,6 +365,7 @@ const PrivacyPage = () => {
         </Content>
       </ContentContainer>
     </Container>
+    </>
   );
 };
 

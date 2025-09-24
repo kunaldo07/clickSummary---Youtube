@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import config from '../config/environment';
 import { redirectToExtension } from '../utils/extensionHelpers';
+import SEO from '../components/SEO';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -194,7 +195,15 @@ const HomePage = () => {
   ];
 
   return (
-    <PageContainer>
+    <>
+      <SEO
+        title="ClickSummary - AI-Powered YouTube Video Summaries | Save Time Learning"
+        description="Transform YouTube videos into intelligent summaries with AI-powered insights. Get key takeaways, interactive chat, and export features. Free Chrome extension with premium features."
+        keywords="YouTube summary, AI video summary, Chrome extension, video insights, AI chat, video transcription, learn faster, productivity, video analysis"
+        url="/"
+        type="website"
+      />
+      <PageContainer>
       <HeroSection>
         <Container>
           <HeroTitle
@@ -258,6 +267,7 @@ const HomePage = () => {
         </Container>
       </FeaturesSection>
     </PageContainer>
+    </>
   );
 };
 
