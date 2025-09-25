@@ -10,18 +10,18 @@ const SEO = ({
   type = "website",
   twitterHandle = "@clicksummary"
 }) => {
-  // Fix: Use consistent production URL without www
+  // Use non-www as canonical URL consistently
   const getCanonicalUrl = () => {
     if (typeof window !== 'undefined') {
-      // In browser, determine canonical URL
+      // In browser, always use non-www as canonical
       const currentHost = window.location.host;
       const currentProtocol = window.location.protocol;
       
-      // If we're on the www version, canonical should point to non-www
+      // Always point canonical to non-www version
       if (currentHost === 'www.clicksummary.com') {
         return `${currentProtocol}//clicksummary.com${url}`;
       }
-      // Otherwise use the current origin
+      // Use current origin if already on non-www
       return `${window.location.origin}${url}`;
     }
     // Default for SSR/build time - use non-www

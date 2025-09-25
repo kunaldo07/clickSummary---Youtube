@@ -64,7 +64,7 @@ const getAllowedOrigins = () => {
   }
   
   if (isProduction) {
-    // Production origins
+    // Production origins - prioritize non-www as canonical
     origins.push(
       'https://clicksummary.com',
       'https://www.clicksummary.com'
@@ -174,6 +174,11 @@ if (process.env.MONGODB_URI) {
 } else {
   console.log('⚠️  MongoDB URI not configured - using in-memory storage');
 }
+
+// Root route - redirect to frontend if someone hits backend directly
+app.get('/', (req, res) => {
+  res.redirect(301, 'https://clicksummary.com');
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));

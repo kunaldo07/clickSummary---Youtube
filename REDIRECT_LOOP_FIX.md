@@ -8,6 +8,12 @@ Your domain `clicksummary.com` was experiencing a redirect loop with maximum (50
 ### **Consistent URL Strategy: Non-WWW Preferred**
 We've standardized on using `https://clicksummary.com` (without www) as the canonical URL.
 
+**Current Issue:** Your GoDaddy DNS points:
+- `clicksummary.com` → Backend API server (causing 405 errors)
+- `www.clicksummary.com` → Frontend S3/CloudFront (working correctly)
+
+**Fix:** Redirect www → non-www and point non-www to your frontend.
+
 ---
 
 ## 📁 Files Updated
