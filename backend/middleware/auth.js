@@ -1,5 +1,19 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+
+// Always use DevUser for development to avoid MongoDB connection issues
+let User;
+if (process.env.NODE_ENV === 'development') {
+  console.log('📝 Auth Middleware: Using in-memory DevUser for development');
+  User = require('../models/DevUser');
+} else {
+  try {
+    User = require('../models/User');
+    console.log('📊 Auth Middleware: Using MongoDB User model');
+  } catch (error) {
+    console.log('📝 Auth Middleware: MongoDB not available, falling back to DevUser');
+    User = require('../models/DevUser');
+  }
+}
 
 // Middleware to verify JWT token
 const auth = async (req, res, next) => {
@@ -20,14 +34,14 @@ const auth = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
       // Get user from database to ensure they still exist
-      const user = await User.findById(decoded.userId).select('-password');
+      const user = await User.findById(decoded.userId);
       
       if (!user) {
         return res.status(401).json({ error: 'User not found. Please sign in again.' });
       }
 
       req.user = user;
-      req.userId = user._id;
+      req.userId = user._id || user.id;
       next();
     } catch (jwtError) {
       if (jwtError.name === 'TokenExpiredError') {

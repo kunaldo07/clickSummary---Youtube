@@ -3,13 +3,19 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { auth } = require('../middleware/auth');
 
-// Try to use MongoDB User model, fall back to DevUser if MongoDB is not available
+// Always use DevUser for development to avoid MongoDB connection issues
 let User;
-try {
-  User = require('../models/User');
-} catch (error) {
-  console.log('📝 Payment routes: Using in-memory DevUser for development');
+if (process.env.NODE_ENV === 'development') {
+  console.log('📝 Development mode: Using in-memory DevUser for payments');
   User = require('../models/DevUser');
+} else {
+  try {
+    User = require('../models/User');
+    console.log('📊 Production mode: Using MongoDB User model');
+  } catch (error) {
+    console.log('📝 MongoDB not available, falling back to DevUser');
+    User = require('../models/DevUser');
+  }
 }
 
 const Subscription = require('../models/Subscription');
@@ -17,10 +23,24 @@ const Subscription = require('../models/Subscription');
 const router = express.Router();
 
 // Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+let razorpay;
+try {
+  if (process.env.NODE_ENV === 'development' || 
+      !process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'your_razorpay_key_id' || 
+      !process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET === 'your_razorpay_key_secret') {
+    console.log('🚧 Development mode: Using mock payment system (Razorpay disabled)');
+    razorpay = null;
+  } else {
+    razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+    console.log('✅ Razorpay initialized with key:', process.env.RAZORPAY_KEY_ID);
+  }
+} catch (error) {
+  console.error('❌ Razorpay initialization failed:', error.message);
+  razorpay = null;
+}
 
 // Simplified subscription plans configuration - Only Free and Monthly
 const PLANS = {
@@ -42,6 +62,39 @@ router.post('/create-subscription', auth, async (req, res) => {
     const { planType } = req.body;
     const user = req.user;
 
+    // Check if Razorpay is available
+    if (!razorpay) {
+      console.log('🚧 Development mode: Razorpay not configured, using mock subscription');
+      
+      // Mock subscription for development
+      user.subscription = {
+        plan: 'monthly',
+        status: 'active',
+        subscriptionId: `mock_sub_${Date.now()}`,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        cancelAtPeriodEnd: false,
+        isActive: true,
+        planType: 'monthly',
+        trialEndsAt: null
+      };
+      
+      await user.save();
+      
+      return res.json({
+        success: true,
+        subscription: {
+          id: user.subscription.subscriptionId,
+          amount: 80000,
+          currency: 'INR',
+          status: 'active',
+          planType: 'monthly'
+        },
+        order: null, // Mock mode doesn't need order
+        message: 'Mock subscription created for development'
+      });
+    }
+
     // Simplified validation - only 'monthly' is valid for paid plans
     if (!planType || !PLANS[planType]) {
       return res.status(400).json({ 
@@ -62,7 +115,7 @@ router.post('/create-subscription', auth, async (req, res) => {
           email: user.email,
           contact: user.phone || '',
           notes: {
-            userId: user._id.toString()
+            userId: (user._id || user.id).toString()
           }
         });
         
@@ -123,7 +176,7 @@ router.post('/create-subscription', auth, async (req, res) => {
       total_count: 12, // 12 months (simplified since only monthly)
       addons: [],
       notes: {
-        userId: user._id.toString(),
+        userId: (user._id || user.id).toString(),
         planType: planType,
         createdAt: new Date().toISOString()
       }
@@ -192,7 +245,7 @@ router.post('/verify-payment', auth, async (req, res) => {
 
       // Create subscription record
       await Subscription.create({
-        userId: user._id,
+        userId: user._id || user.id,
         razorpaySubscriptionId: razorpay_subscription_id,
         razorpayCustomerId: user.razorpayCustomerId,
         planType: 'monthly',
@@ -395,7 +448,7 @@ router.get('/history', auth, async (req, res) => {
     const user = req.user;
     
     // Get subscription records for this user
-    const subscriptions = await Subscription.find({ userId: user._id })
+    const subscriptions = await Subscription.find({ userId: user._id || user.id })
       .sort({ createdAt: -1 })
       .limit(50);
 
@@ -485,6 +538,27 @@ router.get('/usage', auth, async (req, res) => {
     res.status(500).json({ 
       error: 'Failed to get usage statistics',
       details: error.message 
+    });
+  }
+});
+
+// Test endpoint for debugging
+router.get('/test-auth', auth, async (req, res) => {
+  try {
+    const user = req.user;
+    res.json({
+      success: true,
+      user: {
+        id: user.id || user._id,
+        email: user.email,
+        subscription: user.subscription
+      },
+      message: 'Authentication working'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

@@ -3,13 +3,19 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 // Using native fetch (Node.js 18+)
 
-// Try to use MongoDB User model, fall back to DevUser if MongoDB is not available
+// Always use DevUser for development to avoid MongoDB connection issues
 let User;
-try {
-  User = require('../models/User');
-} catch (error) {
-  console.log('📝 MongoDB not available, using in-memory DevUser for development');
+if (process.env.NODE_ENV === 'development') {
+  console.log('📝 Development mode: Using in-memory DevUser for authentication');
   User = require('../models/DevUser');
+} else {
+  try {
+    User = require('../models/User');
+    console.log('📊 Production mode: Using MongoDB User model');
+  } catch (error) {
+    console.log('📝 MongoDB not available, falling back to DevUser');
+    User = require('../models/DevUser');
+  }
 }
 
 const { auth, generateToken } = require('../middleware/auth');
@@ -134,8 +140,73 @@ router.post('/google-callback', async (req, res) => {
       return res.status(500).json({ success: false, message: 'OAuth not properly configured' });
     }
 
-    if (!process.env.GOOGLE_CLIENT_SECRET) {
+    if (!process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET === 'your_google_client_secret_here') {
       console.error('❌ GOOGLE_CLIENT_SECRET not configured');
+      
+      // Development workaround - create a test user
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚧 Using development workaround for OAuth...');
+        
+        const testUser = {
+          sub: 'dev_test_user',
+          email: 'test@developer.com',
+          name: 'Test Developer',
+          picture: 'https://via.placeholder.com/96x96/8b5cf6/ffffff?text=DEV'
+        };
+        
+        // Skip to user creation/login with test data
+        const { sub: googleId, email, name, picture } = testUser;
+        
+        let user = await User.findByGoogleId(googleId);
+        
+        if (!user) {
+          user = await User.create({
+            googleId,
+            email,
+            name,
+            picture,
+            subscription: {
+              plan: 'free',
+              status: 'active',
+              trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            }
+          });
+          console.log('✅ Development test user created:', email);
+        } else {
+          console.log('✅ Development test user logged in:', email);
+        }
+        
+        user.recordSignIn(req);
+        await user.save();
+        
+        const token = generateToken(user.id || user._id);
+        
+        return res.json({
+          success: true,
+          token,
+          user: {
+            id: user.id || user._id,
+            email: user.email,
+            name: user.name,
+            picture: user.picture,
+            role: user.role,
+            isAdmin: user.isAdmin,
+            subscription: {
+              isActive: user.hasActiveSubscription,
+              planType: user.subscription.planType,
+              trialEndsAt: user.subscription.trialEndsAt,
+              endDate: user.subscription.endDate
+            },
+            usage: {
+              summariesToday: user.usage.summariesToday,
+              chatQueriesToday: user.usage.chatQueriesToday,
+              totalSummaries: user.usage.totalSummaries,
+              totalChatQueries: user.usage.totalChatQueries
+            }
+          }
+        });
+      }
+      
       return res.status(500).json({ success: false, message: 'OAuth not properly configured' });
     }
     
@@ -534,6 +605,40 @@ router.get('/admin/platform-analytics', auth, async (req, res) => {
   } catch (error) {
     console.error('Platform analytics error:', error);
     res.status(500).json({ error: 'Could not fetch platform analytics' });
+  }
+});
+
+// Test endpoint for debugging
+router.get('/test', async (req, res) => {
+  try {
+    console.log('🧪 Test endpoint called');
+    console.log('Environment vars:', {
+      NODE_ENV: process.env.NODE_ENV,
+      JWT_SECRET: !!process.env.JWT_SECRET,
+      GOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET === 'your_google_client_secret_here' ? 'PLACEHOLDER' : 'CONFIGURED'
+    });
+    
+    // Test user creation
+    const testUser = await User.create({
+      googleId: 'test_123',
+      email: 'test@example.com',
+      name: 'Test User',
+      picture: 'test.jpg'
+    });
+    
+    res.json({
+      success: true,
+      message: 'Test successful',
+      userId: testUser.id || testUser._id
+    });
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
   }
 });
 
