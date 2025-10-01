@@ -1,4 +1,6 @@
+# Don’t rewrite Next.js assets
+/_next/*    /_next/:splat   200
+/static/*   /static/:splat  200
 
-
-# Handle Next.js dynamic routing
-/*    /index.html   200
+# All other routes → index.html
+/*          /index.html     200
