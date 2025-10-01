@@ -151,6 +151,12 @@ const Footer = () => {
               <LogoImage 
                 src="/Click_Summary_Logo_Updated.png" 
                 alt="ClickSummary Logo"
+                onError={(e) => {
+                  console.log('❌ Footer Logo failed to load:', e.target.src);
+                }}
+                onLoad={(e) => {
+                  console.log('✅ Footer Logo loaded successfully:', e.target.src);
+                }}
               />
               <BrandText>ClickSummary</BrandText>
             </BrandHeader>

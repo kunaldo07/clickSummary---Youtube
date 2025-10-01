@@ -52,6 +52,8 @@ const LogoImage = styled.img`
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.3));
   transition: transform 0.2s ease;
+  display: block; /* Ensure image is visible */
+  max-width: 100%;
   
   &:hover {
     transform: scale(1.05);
@@ -325,6 +327,15 @@ const Navigation = () => {
           <LogoImage 
             src="/Click_Summary_Logo_Updated.png" 
             alt="ClickSummary Logo"
+            onError={(e) => {
+              console.log('❌ Navigation Logo failed to load:', e.target.src);
+              console.log('❌ Error event:', e);
+            }}
+            onLoad={(e) => {
+              console.log('✅ Navigation Logo loaded successfully:', e.target.src);
+              console.log('✅ Image dimensions:', e.target.naturalWidth, 'x', e.target.naturalHeight);
+              console.log('✅ Display dimensions:', e.target.width, 'x', e.target.height);
+            }}
           />
           <span>ClickSummary</span>
         </Brand>

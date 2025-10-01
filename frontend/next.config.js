@@ -1,9 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',          // Static export
-  trailingSlash: true,       // Required for static hosting
+  output: 'export',
+  trailingSlash: true,
   compiler: {
-    styledComponents: true,
+    styledComponents: {
+      displayName: true,
+      ssr: true,
+      fileName: false,
+      cssProp: true,
+      namespace: '',
+      topLevelImportPaths: [],
+      meaninglessFileNames: ['index'],
+    },
   },
   images: {
     unoptimized: true,
@@ -12,6 +20,6 @@ const nextConfig = {
   env: {
     CUSTOM_KEY: 'clicksummary-nextjs',
   },
-}
+};
 
 module.exports = nextConfig;
