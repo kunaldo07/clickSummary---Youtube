@@ -1,5 +1,2 @@
-# Handle Next.js SPA routing
+# Handle Next.js dynamic routing
 /*    /index.html   200
-
-# Serve static assets correctly
-/_next/*  /_next/:splat  200

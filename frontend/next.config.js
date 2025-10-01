@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  trailingSlash: true,
+  // Removed output: 'export' - use standard Next.js build instead
   compiler: {
     styledComponents: {
       displayName: true,
@@ -14,7 +13,6 @@ const nextConfig = {
     },
   },
   images: {
-    unoptimized: true,
     domains: ['clicksummary.com', 'lh3.googleusercontent.com'],
   },
   env: {
