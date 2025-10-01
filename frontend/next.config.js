@@ -1,36 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',  // Essential for creating 'out' directory
-  trailingSlash: true,  // Required for static hosting
+  output: 'export',
+  trailingSlash: true,
+  basePath: '',  // Ensures correct asset paths for static hosting
+  assetPrefix: '',  // Critical for static asset serving
   compiler: {
     styledComponents: true,
   },
   images: {
-    unoptimized: true,  // Required for static export
+    unoptimized: true,
     domains: ['clicksummary.com', 'lh3.googleusercontent.com'],
   },
-  // Redirects don't work with static export, so commenting out
-  // async redirects() {
-  //   return [
-  //     {
-  //       source: '/home',
-  //       destination: '/',
-  //       permanent: true,
-  //     },
-  //     // Redirect www to non-www (handled at DNS level too)
-  //     {
-  //       source: '/:path*',
-  //       has: [
-  //         {
-  //           type: 'host',
-  //           value: 'www.clicksummary.com',
-  //         },
-  //       ],
-  //       destination: 'https://clicksummary.com/:path*',
-  //       permanent: true,
-  //     },
-  //   ]
-  // },
+  // Ensure all pages are statically generated  
+  distDir: '.next',
   env: {
     CUSTOM_KEY: 'clicksummary-nextjs',
   },
