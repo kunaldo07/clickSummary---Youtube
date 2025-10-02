@@ -1,6 +1,19 @@
-# Don’t rewrite Next.js assets
-/_next/*    /_next/:splat   200
-/static/*   /static/:splat  200
+# Serve Next.js static assets directly - MUST come first
+/_next/static/*    /_next/static/:splat    200
+/_next/*           /_next/:splat           200
 
-# All other routes → index.html
-/*          /index.html     200
+# Serve public assets
+/favicon.ico       /favicon.ico            200
+/robots.txt        /robots.txt             200
+/sitemap.xml       /sitemap.xml            200
+/*.png             /:splat.png             200
+/*.jpg             /:splat.jpg             200
+/*.ico             /:splat.ico             200
+
+# Handle specific pages
+/pricing           /pricing/index.html     200
+/signin            /signin/index.html      200
+/privacy           /privacy/index.html     200
+
+# Fallback for all other routes (SPA routing)
+/*                 /index.html             200

@@ -2,6 +2,9 @@
 const nextConfig = {
   output: 'export',
   trailingSlash: true,
+  basePath: '',
+  assetPrefix: '',
+  distDir: 'out',
   compiler: {
     styledComponents: {
       displayName: true,
