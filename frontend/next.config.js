@@ -1,22 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
-  trailingSlash: true,
-  basePath: '',
-  assetPrefix: '',
-  distDir: 'out',
+  trailingSlash: false,  // Try without trailing slash
+  distDir: 'build',      // Change output directory
   compiler: {
-    styledComponents: {
-      displayName: true,
-      ssr: true,
-    },
+    styledComponents: true,  // Simplified
   },
   images: {
     unoptimized: true,
-    domains: ['clicksummary.com', 'lh3.googleusercontent.com'],
-  },
-  env: {
-    CUSTOM_KEY: 'clicksummary-nextjs',
   },
 };
 
