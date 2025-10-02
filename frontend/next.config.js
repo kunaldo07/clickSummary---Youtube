@@ -1,13 +1,12 @@
+// next.config.js - Remove static export
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  trailingSlash: false,  // Try without trailing slash
-  distDir: 'build',      // Change output directory
+  // Remove output: 'export'
   compiler: {
-    styledComponents: true,  // Simplified
+    styledComponents: true,
   },
   images: {
-    unoptimized: true,
+    domains: ['clicksummary.com', 'lh3.googleusercontent.com'],
   },
 };
 
