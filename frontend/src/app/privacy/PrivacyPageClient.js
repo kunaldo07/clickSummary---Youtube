@@ -351,8 +351,8 @@ export default function PrivacyPageClient() {
               <Paragraph>
                 If you have any questions about this privacy policy or our data practices, please contact us at:
               </Paragraph>
-              <ContactEmail href="mailto:privacy@clicksummary.com">
-                privacy@clicksummary.com
+              <ContactEmail href="mailto:kunal@clicksummary.com">
+                kunal@clicksummary.com
               </ContactEmail>
             </ContactBox>
           </Content>
