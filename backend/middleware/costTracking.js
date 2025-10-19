@@ -53,6 +53,11 @@ const checkCostLimit = async (req, res, next) => {
 // Function to track costs in database
 const trackCost = async (userId, videoId, action, model, inputTokens, outputTokens, cost, cached = false) => {
   try {
+    // In development with in-memory users, skip writing cost rows that expect ObjectId
+    if (process.env.NODE_ENV === 'development' && typeof userId === 'string' && userId.startsWith('user_')) {
+      console.log(`🧪 Dev mode: skipping CostTracking save for in-memory user ${userId}`);
+      return;
+    }
     const costRecord = new CostTracking({
       user: userId,
       videoId,

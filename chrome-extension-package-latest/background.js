@@ -55,19 +55,18 @@ const detectEnvironment = async () => {
 
 const getAPIBaseURL = async () => {
   const env = await detectEnvironment();
-  
-  if (env.isDevelopment) {
-    console.log('🏠 Using localhost backend');
-    return 'http://localhost:3001/api';
-  } else {
-    console.log('🌐 Using production backend');
-    return 'https://api.clicksummary.com/api';
-  }
+  return env.isDevelopment ? 'http://localhost:3001/api' : 'https://api.clicksummary.com/api';
+};
+
+const getWebsiteBaseURL = async () => {
+  const env = await detectEnvironment();
+  return env.isDevelopment ? 'http://localhost:3002' : 'https://www.clicksummary.com';
 };
 
 // Initialize CONFIG with async environment detection
 let CONFIG = {
   API_BASE_URL: 'http://localhost:3001/api', // Default fallback
+  WEBSITE_BASE_URL: 'http://localhost:3002', // Default fallback
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
   environment: { isDevelopment: true, isProduction: false }
@@ -80,9 +79,28 @@ let CONFIG = {
     
     const environment = await detectEnvironment();
     const apiBaseURL = await getAPIBaseURL();
+    const websiteBaseURL = await getWebsiteBaseURL();
+    
+    // Apply stored overrides if present
+    try {
+      const stored = await chrome.storage.local.get(['config_overrides']);
+      if (stored && stored.config_overrides) {
+        if (stored.config_overrides.apiBaseUrl) {
+          console.log('🔧 Applying API base URL override from storage');
+          CONFIG.API_BASE_URL = stored.config_overrides.apiBaseUrl;
+        }
+        if (stored.config_overrides.websiteUrl) {
+          console.log('🔧 Applying Website base URL override from storage');
+          CONFIG.WEBSITE_BASE_URL = stored.config_overrides.websiteUrl;
+        }
+      }
+    } catch (e) {
+      console.log('⚠️ Could not read config overrides:', e);
+    }
     
     CONFIG = {
-      API_BASE_URL: apiBaseURL,
+      API_BASE_URL: CONFIG.API_BASE_URL || apiBaseURL,
+      WEBSITE_BASE_URL: CONFIG.WEBSITE_BASE_URL || websiteBaseURL,
       RETRY_ATTEMPTS: 3,
       RETRY_DELAY: 1000,
       environment
@@ -91,6 +109,7 @@ let CONFIG = {
     console.log('✅ Environment detection complete');
     console.log(`🌍 Mode: ${CONFIG.environment.isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'}`);
     console.log(`🔗 API URL: ${CONFIG.API_BASE_URL}`);
+    console.log(`🕸️ Website URL: ${CONFIG.WEBSITE_BASE_URL}`);
     
   } catch (error) {
     console.error('❌ Environment detection failed:', error);
@@ -119,6 +138,49 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           console.error('❌ Summarize error:', error);
           sendResponse({ error: error.message });
         });
+      return true;
+    }
+    
+    if (request.action === 'getConfig') {
+      console.log('🎯 Handling getConfig action');
+      sendResponse({
+        API_BASE_URL: CONFIG.API_BASE_URL,
+        WEBSITE_URL: CONFIG.WEBSITE_BASE_URL,
+        environment: CONFIG.environment
+      });
+      return true;
+    }
+    
+    if (request.action === 'setConfig') {
+      console.log('🎯 Handling setConfig action');
+      const overrides = request.overrides || {};
+      const newOverrides = {};
+      
+      if (overrides.apiBaseUrl) {
+        CONFIG.API_BASE_URL = overrides.apiBaseUrl;
+        newOverrides.apiBaseUrl = overrides.apiBaseUrl;
+      }
+      if (overrides.websiteUrl) {
+        CONFIG.WEBSITE_BASE_URL = overrides.websiteUrl;
+        newOverrides.websiteUrl = overrides.websiteUrl;
+      }
+      if (overrides.environmentPreference) {
+        environmentCache = overrides.environmentPreference;
+        chrome.storage.local.set({ environment_preference: overrides.environmentPreference }, () => {});
+      }
+      
+      chrome.storage.local.get(['config_overrides'], (stored) => {
+        const merged = { ...((stored && stored.config_overrides) || {}), ...newOverrides };
+        chrome.storage.local.set({ config_overrides: merged }, () => {
+          if (chrome.runtime.lastError) {
+            console.warn('⚠️ Failed saving config overrides:', chrome.runtime.lastError);
+            sendResponse({ success: false, error: chrome.runtime.lastError.message });
+          } else {
+            console.log('✅ Config overrides saved');
+            sendResponse({ success: true, config: { API_BASE_URL: CONFIG.API_BASE_URL, WEBSITE_URL: CONFIG.WEBSITE_BASE_URL, environment: CONFIG.environment } });
+          }
+        });
+      });
       return true;
     }
     
@@ -319,7 +381,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       supportedActions: [
         'summarize', 'summarizeAdvanced', 'summarizeTimestamped',
         'clearCache', 'clearVideoCache', 'chatQuery',
-        'storeUserToken', 'userSignedOut', 'syncAuthData', 'requestAuthSync'
+        'storeUserToken', 'userSignedOut', 'syncAuthData', 'requestAuthSync',
+        'getConfig', 'setConfig'
       ]
     });
     return true;
@@ -433,9 +496,28 @@ async function handleAdvancedSummarization(requestData) {
       throw new Error('Please sign in to use the summarizer');
     }
 
-    // Validate input data
-    if (!requestData.transcript || requestData.transcript.trim() === '') {
-      console.error('❌ Empty transcript provided');
+    // Build source text: prefer transcript; fallback to comments if available
+    let sourceText = requestData.transcript && requestData.transcript.trim() !== ''
+      ? requestData.transcript
+      : '';
+
+    if (!sourceText && Array.isArray(requestData.comments) && requestData.comments.length > 0) {
+      console.log('📝 Transcript missing, falling back to comments for summarization');
+      try {
+        const topComments = requestData.comments
+          .filter(c => c && typeof c.text === 'string' && c.text.trim().length > 0)
+          .slice(0, 10)
+          .map((c, idx) => `Comment ${idx + 1} by ${c.author || 'Unknown'} (${c.likes || 0} likes): ${c.text.trim()}`)
+          .join('\n');
+        sourceText = `Video top comments context (no transcript available):\n${topComments}`;
+      } catch (e) {
+        console.warn('⚠️ Failed to build comments fallback text:', e);
+      }
+    }
+
+    // Validate input data after attempting fallback
+    if (!sourceText || sourceText.trim() === '') {
+      console.error('❌ No transcript or comments available to summarize');
       throw new Error('No transcript available for this video');
     }
 
@@ -450,7 +532,7 @@ async function handleAdvancedSummarization(requestData) {
       type: requestData.type,
       length: requestData.length,
       format: requestData.format,
-      transcriptLength: requestData.transcript.length
+      transcriptLength: (sourceText && typeof sourceText === 'string') ? sourceText.length : 0
     });
 
     console.log('🌍 Environment config:', {
@@ -461,7 +543,7 @@ async function handleAdvancedSummarization(requestData) {
 
     // Call secure backend with gpt-5-nano
     const response = await callSecureBackend('/summarizer/summarize', {
-      transcript: requestData.transcript,
+      transcript: sourceText,
       videoId: requestData.videoId,
       type: requestData.type,
       length: requestData.length,
@@ -571,12 +653,11 @@ async function callSecureBackend(endpoint, data, userToken) {
       console.log(`🔗 Calling secure backend: ${endpoint} (attempt ${attempt + 1})`);
       console.log(`🌐 Full URL: ${url}`);
       
-      // Create AbortController for timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
         console.log(`⏰ Backend call timeout after 30 seconds: ${endpoint}`);
         controller.abort();
-      }, 30000); // 30 second timeout
+      }, 30000);
       
       const response = await fetch(url, {
         method: 'POST',
@@ -601,7 +682,6 @@ async function callSecureBackend(endpoint, data, userToken) {
         if (response.status === 401) {
           throw new Error('Authentication failed. Please sign in again.');
         } else if (response.status === 429) {
-          // Handle usage limit errors
           if (errorData.code === 'DAILY_LIMIT_EXCEEDED') {
             const details = errorData.details || {};
             throw new Error(`Daily limit reached! You've used ${details.used}/${details.limit} summaries today. ${details.planType === 'free' ? 'Upgrade to Premium for unlimited summaries.' : 'Limit resets tomorrow.'}`);
@@ -624,17 +704,12 @@ async function callSecureBackend(endpoint, data, userToken) {
 
     } catch (error) {
       console.error(`❌ Backend call failed (attempt ${attempt + 1}):`, error);
-      
-      // Handle timeout specifically
       if (error.name === 'AbortError') {
         throw new Error(`Backend request timed out after 30 seconds. Please check if backend is running on ${CONFIG.API_BASE_URL}`);
       }
-      
       if (attempt === CONFIG.RETRY_ATTEMPTS - 1) {
-        throw error;
+        throw new Error('Unable to connect to backend server. Please check if the server is running.');
       }
-      
-      // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY * (attempt + 1)));
     }
   }

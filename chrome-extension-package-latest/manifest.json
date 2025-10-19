@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ClickSummary",
+  "name": "ClickSummary: AI YouTube Summarizer",
   "version": "1.1.0",
-  "description": "Transform YouTube videos into intelligent summaries with AI-powered insights. Save time and learn faster.",
+  "description": "Summarize YouTube videos instantly with AI. Get transcripts, key insights, and highlights in one click.",
   "author": "ClickSummary Team",
   "homepage_url": "https://www.clicksummary.com",
   "privacy_policy": "https://www.clicksummary.com/privacy",
@@ -43,7 +43,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "ClickSummary - Ready to use!",
+    "default_title": "ClickSummary: AI YouTube Summarizer",
     "default_popup": "popup.html"
   },
   "icons": {

@@ -5,35 +5,43 @@ const { auth } = require('../middleware/auth');
 const { requireActiveSubscription } = require('../middleware/subscription');
 const { checkCostLimit, trackCost } = require('../middleware/costTracking');
 
-// Try to use MongoDB User model, fall back to DevUser if MongoDB is not available
+// Use DevUser in development to avoid ObjectId casts; otherwise use MongoDB User
 let User;
-try {
-  User = require('../models/User');
-} catch (error) {
-  console.log('📝 Summarizer routes: Using in-memory DevUser for development');
+if (process.env.NODE_ENV === 'development') {
+  console.log('📝 Summarizer routes: Development mode - using in-memory DevUser');
   User = require('../models/DevUser');
+} else {
+  try {
+    User = require('../models/User');
+  } catch (error) {
+    console.log('📝 Summarizer routes: MongoDB not available - falling back to DevUser');
+    User = require('../models/DevUser');
+  }
 }
 
 const router = express.Router();
 
-// Initialize OpenAI with GPT-4o Mini configuration
+// Initialize OpenAI with GPT-4o Mini configuration and network retry settings
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 3,
+  timeout: 30000, // 30 seconds
+  dangerouslyAllowBrowser: false
 });
 
 // Configuration
 const CONFIG = {
-  PRIMARY_MODEL: process.env.OPENAI_MODEL || 'gpt-5-nano',
-  BACKUP_MODEL: process.env.OPENAI_BACKUP_MODEL || 'gpt-5-nano',
+  PRIMARY_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  BACKUP_MODEL: process.env.OPENAI_BACKUP_MODEL || 'gpt-3.5-turbo',
   MAX_TOKENS: {
     short: parseInt(process.env.OPENAI_MAX_TOKENS_SHORT) || 120,
     detailed: parseInt(process.env.OPENAI_MAX_TOKENS_DETAILED) || 200,
     chat: parseInt(process.env.OPENAI_MAX_TOKENS_CHAT) || 150
   },
   MAX_TRANSCRIPT_LENGTH: parseInt(process.env.MAX_TRANSCRIPT_LENGTH) || 8000,
-  COST_PER_1K_INPUT: parseFloat(process.env.COST_PER_1K_INPUT_TOKENS) || 0.00005,
-  COST_PER_1K_OUTPUT: parseFloat(process.env.COST_PER_1K_OUTPUT_TOKENS) || 0.0004,
-  COST_PER_1K_CACHED: parseFloat(process.env.COST_PER_1K_CACHED_TOKENS) || 0.000005
+  COST_PER_1K_INPUT: parseFloat(process.env.COST_PER_1K_INPUT_TOKENS) || 0.00015,
+  COST_PER_1K_OUTPUT: parseFloat(process.env.COST_PER_1K_OUTPUT_TOKENS) || 0.0006,
+  COST_PER_1K_CACHED: parseFloat(process.env.COST_PER_1K_CACHED_TOKENS) || 0.000075
 };
 
 // Summarize endpoint with GPT-4o Mini
@@ -244,51 +252,81 @@ async function callOpenAIWithTimeout(apiCall, timeoutMs = 25000) {
 async function generateOptimizedSummary({ transcript, type, length, format }) {
   const prompt = getOptimizedPromptForGPT4oMini(type, length, format);
   const maxTokens = getMaxTokensForLength(length);
+  const inputText = `${prompt}\n\nTranscript: ${transcript}`;
   
   try {
-    console.log(`🤖 Calling ${CONFIG.PRIMARY_MODEL} for summary generation (25s timeout)`);
+    console.log(`🤖 Calling ${CONFIG.PRIMARY_MODEL} (Chat Completions API) for summary generation (25s timeout)`);
     
     const completion = await callOpenAIWithTimeout(async () => {
       return await openai.chat.completions.create({
         model: CONFIG.PRIMARY_MODEL,
         messages: [
-          { role: 'system', content: prompt },
-          { role: 'user', content: `Transcript: ${transcript}` }
-        ],
-        max_tokens: maxTokens,
-        temperature: 0.7,
-        presence_penalty: 0.1,
-        frequency_penalty: 0.1
-      });
-    }, 25000); // 25 second timeout
-
-    return {
-      summary: completion.choices[0].message.content.trim(),
-      inputTokens: completion.usage.prompt_tokens,
-      outputTokens: completion.usage.completion_tokens
-    };
-  } catch (error) {
-    console.warn(`❌ ${CONFIG.PRIMARY_MODEL} failed (${error.message}), trying backup model:`);
-    
-    // Fallback to backup model
-    console.log(`🔄 Trying backup model ${CONFIG.BACKUP_MODEL} (25s timeout)`);
-    const completion = await callOpenAIWithTimeout(async () => {
-      return await openai.chat.completions.create({
-        model: CONFIG.BACKUP_MODEL,
-        messages: [
-          { role: 'system', content: prompt },
-          { role: 'user', content: `Transcript: ${transcript}` }
+          {
+            role: 'system',
+            content: prompt
+          },
+          {
+            role: 'user',
+            content: `Transcript: ${transcript}`
+          }
         ],
         max_tokens: maxTokens,
         temperature: 0.7
       });
-    }, 25000); // 25 second timeout
+    }, 25000);
+
+    const summaryText = (completion.choices[0]?.message?.content || '').trim();
+    const inputTokens = completion.usage?.prompt_tokens || 0;
+    const outputTokens = completion.usage?.completion_tokens || 0;
 
     return {
-      summary: completion.choices[0].message.content.trim(),
-      inputTokens: completion.usage.prompt_tokens,
-      outputTokens: completion.usage.completion_tokens
+      summary: summaryText,
+      inputTokens,
+      outputTokens
     };
+  } catch (error) {
+    console.warn(`❌ ${CONFIG.PRIMARY_MODEL} failed (${error.message}), trying backup model:`);
+    
+    try {
+      const completion = await callOpenAIWithTimeout(async () => {
+        return await openai.chat.completions.create({
+          model: CONFIG.BACKUP_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: prompt
+            },
+            {
+              role: 'user',
+              content: `Transcript: ${transcript}`
+            }
+          ],
+          max_tokens: maxTokens,
+          temperature: 0.7
+        });
+      }, 25000);
+
+      const summaryText = (completion.choices[0]?.message?.content || '').trim();
+      const inputTokens = completion.usage?.prompt_tokens || 0;
+      const outputTokens = completion.usage?.completion_tokens || 0;
+
+      return {
+        summary: summaryText,
+        inputTokens,
+        outputTokens
+      };
+    } catch (backupError) {
+      console.warn(`❌ Backup model failed (${backupError.message}).`);
+      // Development fallback: synthesize a simple summary to avoid 500s locally
+      if (process.env.NODE_ENV === 'development' || !process.env.OPENAI_API_KEY) {
+        console.log('🔧 Using development fallback summary generation');
+        const cap = (length === 'detailed') ? 12 : 6;
+        const sentences = String(transcript).split(/[.!?]+/).map(s => s.trim()).filter(Boolean).slice(0, cap);
+        const fallback = sentences.length > 0 ? sentences.map(s => `• ${s}`).join('\n') : 'No content available to summarize.';
+        return { summary: fallback, inputTokens: 0, outputTokens: 0 };
+      }
+      throw backupError;
+    }
   }
 }
 
@@ -303,63 +341,106 @@ Guidelines:
 - Be conversational but informative`;
 
   try {
-    console.log(`🤖 Chat response with ${CONFIG.PRIMARY_MODEL} (25s timeout)`);
+    console.log(`🤖 Chat response with ${CONFIG.PRIMARY_MODEL} (Chat Completions API, 25s timeout)`);
     const completion = await callOpenAIWithTimeout(async () => {
       return await openai.chat.completions.create({
         model: CONFIG.PRIMARY_MODEL,
         messages: [
-          { role: 'system', content: prompt },
-          { role: 'user', content: `Transcript: ${transcript}\n\nQuestion: ${question}` }
+          {
+            role: 'system',
+            content: prompt
+          },
+          {
+            role: 'user',
+            content: `Transcript: ${transcript}\n\nQuestion: ${question}`
+          }
         ],
         max_tokens: CONFIG.MAX_TOKENS.chat,
         temperature: 0.7
       });
-    }, 25000); // 25 second timeout
+    }, 25000);
+
+    const answerText = (completion.choices[0]?.message?.content || '').trim();
+    const inputTokens = completion.usage?.prompt_tokens || 0;
+    const outputTokens = completion.usage?.completion_tokens || 0;
 
     return {
-      answer: completion.choices[0].message.content.trim(),
-      inputTokens: completion.usage.prompt_tokens,
-      outputTokens: completion.usage.completion_tokens
+      answer: answerText,
+      inputTokens,
+      outputTokens
     };
   } catch (error) {
     console.warn(`❌ ${CONFIG.PRIMARY_MODEL} failed for chat (${error.message}), trying backup:`);
     
-    console.log(`🔄 Chat backup with ${CONFIG.BACKUP_MODEL} (25s timeout)`);
-    const completion = await callOpenAIWithTimeout(async () => {
-      return await openai.chat.completions.create({
-        model: CONFIG.BACKUP_MODEL,
-        messages: [
-          { role: 'system', content: prompt },
-          { role: 'user', content: `Transcript: ${transcript}\n\nQuestion: ${question}` }
-        ],
-        max_tokens: CONFIG.MAX_TOKENS.chat,
-        temperature: 0.7
-      });
-    }, 25000); // 25 second timeout
+    try {
+      console.log(`🔄 Chat backup with ${CONFIG.BACKUP_MODEL} (Chat Completions API, 25s timeout)`);
+      const completion = await callOpenAIWithTimeout(async () => {
+        return await openai.chat.completions.create({
+          model: CONFIG.BACKUP_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: prompt
+            },
+            {
+              role: 'user',
+              content: `Transcript: ${transcript}\n\nQuestion: ${question}`
+            }
+          ],
+          max_tokens: CONFIG.MAX_TOKENS.chat,
+          temperature: 0.7
+        });
+      }, 25000);
 
-    return {
-      answer: completion.choices[0].message.content.trim(),
-      inputTokens: completion.usage.prompt_tokens,
-      outputTokens: completion.usage.completion_tokens
-    };
+      const answerText = (completion.choices[0]?.message?.content || '').trim();
+      const inputTokens = completion.usage?.prompt_tokens || 0;
+      const outputTokens = completion.usage?.completion_tokens || 0;
+
+      return {
+        answer: answerText,
+        inputTokens,
+        outputTokens
+      };
+    } catch (backupError) {
+      console.warn(`❌ Chat backup model failed (${backupError.message}).`);
+      if (process.env.NODE_ENV === 'development' || !process.env.OPENAI_API_KEY) {
+        console.log('🔧 Using development fallback chat response');
+        const fallback = 'Sorry, I could not generate a response right now. Based on the transcript, try rephrasing your question or summarizing the main topic.';
+        return { answer: fallback, inputTokens: 0, outputTokens: 0 };
+      }
+      throw backupError;
+    }
   }
 }
 
 function optimizeTranscriptForModel(transcript) {
-  // Convert to string if array
-  let text = Array.isArray(transcript) 
-    ? transcript.map(segment => segment.text || segment).join(' ')
-    : String(transcript);
-  
-  // Remove excessive whitespace and clean up
-  text = text.replace(/\s+/g, ' ').trim();
-  
-  // Truncate if too long for GPT-4o Mini
+  // Convert to string if array of segments
+  let text = Array.isArray(transcript)
+    ? transcript.map(s => (s && s.text) ? s.text : String(s)).join(' ')
+    : String(transcript || '');
+
+  // Normalize line breaks
+  text = text.replace(/\r\n|\r/g, '\n');
+
+  // Remove bracketed tags and common noise (e.g., [Music], [Applause])
+  text = text
+    .replace(/\[(?:music|applause|laughter|silence|intro|outro|music[^\]]*|sound[^\]]*)\]/gi, ' ')
+    .replace(/\((?:music|applause|laughter|silence|intro|outro)\)/gi, ' ');
+
+  // Remove standalone timestamps at line starts and inline time markers
+  text = text
+    .replace(/^\s*\d{1,2}:\d{2}(?::\d{2})?\s*/gm, ' ')
+    .replace(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g, ' ');
+
+  // Remove leftover bullet glyphs and normalize spaces
+  text = text.replace(/[•·►▪︎]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // Truncate if too long for the model (post-cleaning)
   if (text.length > CONFIG.MAX_TRANSCRIPT_LENGTH) {
     console.log(`⚡ Truncating transcript from ${text.length} to ${CONFIG.MAX_TRANSCRIPT_LENGTH} chars`);
     text = text.substring(0, CONFIG.MAX_TRANSCRIPT_LENGTH) + '...';
   }
-  
+
   return text;
 }
 
@@ -370,51 +451,36 @@ function calculateCost(inputTokens, outputTokens) {
 }
 
 function getOptimizedPromptForGPT4oMini(type, length, format) {
-  const baseRules = `Create a ${length} summary in ${format} format. Follow these strict rules:
+  const totalPoints = length === 'detailed' ? 12 : 6;
 
-FORMATTING RULES:
-- No emoji section headers (❌ Bad: "🎯 Key Points") 
-- Use simple text headers (✅ Good: "Key Points")
-- Each point must be 1-2 sentences maximum
-- No repetition between points
-- Content must be concrete and specific
+  const rules = `You are an expert summarizer. Produce a high-signal summary from the cleaned transcript.
+Output rules:
+- Organize into the following sections with emoji headers:
+  🎯 Key Ideas
+  📌 Why It Matters
+  🔍 Evidence / Context
+  ✅ Actionable Takeaways
+- Under each section, write concise bullet points (1–2 sentences each).
+- Use a total of at most ${totalPoints} bullets across all sections (distribute sensibly).
+- Do NOT quote the transcript verbatim; synthesize and paraphrase.
+- Remove fluff (e.g., "um", filler), ignore stage directions like [Music], and ignore timestamps.
+- Be complete but tight; no trailing/incomplete bullets. No repeated points.
+- If content is thin, prioritize “🎯 Key Ideas” and “✅ Actionable Takeaways”.`;
 
-LENGTH REQUIREMENTS:
-- Short: Maximum 3 sections, 2 points each (6 total points)
-- Detailed: Maximum 4 sections, 3 points each (12 total points)
+  const style = (() => {
+    switch (type) {
+      case 'funny':
+        return 'Tone: light and witty where appropriate, but keep it informative.';
+      case 'actionable':
+        return 'Tone: practical and implementation-focused. Emphasize concrete steps.';
+      case 'controversial':
+        return 'Tone: balanced; present opposing viewpoints clearly.';
+      default:
+        return 'Tone: clear, objective, insightful.';
+    }
+  })();
 
-SECTION SPACING:
-- Exactly 2 blank lines between sections
-- No blank lines within sections
-- Points start with emoji + space`;
-
-  const typePrompts = {
-    insightful: `${baseRules}
-
-TYPE: Insightful Analysis
-Focus on: Key learnings, important concepts, valuable insights, practical takeaways
-Style: Educational and thought-provoking`,
-
-    funny: `${baseRules}
-
-TYPE: Funny Highlights  
-Focus on: Humorous moments, witty comments, entertaining stories, amusing observations
-Style: Light-hearted and engaging`,
-
-    actionable: `${baseRules}
-
-TYPE: Actionable Takeaways
-Focus on: Specific steps, practical advice, implementable strategies, clear instructions  
-Style: Direct and implementation-focused`,
-
-    controversial: `${baseRules}
-
-TYPE: Controversial Points
-Focus on: Debatable topics, opposing viewpoints, provocative statements, discussion-worthy claims
-Style: Balanced and thought-provoking`
-  };
-
-  return typePrompts[type] || typePrompts.insightful;
+  return `${rules}\n${style}\nFormat exactly as:\n🎯 Key Ideas\n• ...\n• ...\n\n📌 Why It Matters\n• ...\n\n🔍 Evidence / Context\n• ...\n\n✅ Actionable Takeaways\n• ...`;
 }
 
 function getMaxTokensForLength(length) {
@@ -469,6 +535,49 @@ router.get('/usage', auth, async (req, res) => {
   } catch (error) {
     console.error('Usage info error:', error);
     res.status(500).json({ error: 'Failed to get usage information' });
+  }
+});
+
+// Test OpenAI connection endpoint (development only)
+router.get('/test-openai', async (req, res) => {
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).json({ error: 'Test endpoint only available in development' });
+  }
+
+  try {
+    console.log('🧪 Testing OpenAI connection...');
+    
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'Say "Hello, OpenAI connection is working!"' }
+      ],
+      max_tokens: 20
+    });
+
+    const response = completion.choices[0]?.message?.content || 'No response';
+    
+    res.json({
+      success: true,
+      message: 'OpenAI connection successful',
+      response: response,
+      model: completion.model,
+      usage: completion.usage
+    });
+
+  } catch (error) {
+    console.error('❌ OpenAI test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      errorType: error.constructor.name,
+      details: {
+        message: error.message,
+        cause: error.cause?.message || 'Unknown',
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      }
+    });
   }
 });
 

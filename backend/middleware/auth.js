@@ -34,7 +34,40 @@ const auth = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
       // Get user from database to ensure they still exist
-      const user = await User.findById(decoded.userId);
+      let user = await User.findById(decoded.userId);
+      
+      // Development convenience: try to recover using googleId/email embedded in token
+      if (!user && process.env.NODE_ENV === 'development') {
+        try {
+          if (decoded.googleId && typeof User.findByGoogleId === 'function') {
+            user = await User.findByGoogleId(decoded.googleId);
+          }
+          if (!user) {
+            const DevUser = require('../models/DevUser');
+            user = await DevUser.create({
+              id: decoded.userId,
+              googleId: decoded.googleId || decoded.userId,
+              email: decoded.email || 'dev@local',
+              name: decoded.name || 'Developer',
+              picture: '',
+              subscription: {
+                planType: 'free',
+                status: 'active',
+                isActive: true,
+                currentPeriodStart: new Date(),
+                currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+              }
+            });
+            console.log('🛠️ Dev fallback: recreated user from token payload', {
+              userId: decoded.userId,
+              googleId: decoded.googleId,
+              email: decoded.email
+            });
+          }
+        } catch (e) {
+          console.warn('⚠️ Dev fallback user recovery failed:', e.message);
+        }
+      }
       
       if (!user) {
         return res.status(401).json({ error: 'User not found. Please sign in again.' });
@@ -113,9 +146,9 @@ const optionalAuth = async (req, res, next) => {
 };
 
 // Generate JWT token
-const generateToken = (userId) => {
+const generateToken = (userId, extra = {}) => {
   return jwt.sign(
-    { userId },
+    { userId, ...extra },
     process.env.JWT_SECRET,
     { 
       expiresIn: '30d',

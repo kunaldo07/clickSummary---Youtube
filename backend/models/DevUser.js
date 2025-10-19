@@ -184,6 +184,25 @@ class DevUser {
     return false;
   }
 
+  // Method to reset monthly usage
+  resetMonthlyUsage() {
+    const now = new Date();
+    const lastReset = this.usage.lastResetDate || new Date(0);
+
+    const monthChanged =
+      now.getFullYear() !== lastReset.getFullYear() ||
+      now.getMonth() !== lastReset.getMonth();
+
+    if (monthChanged) {
+      this.usage.summariesThisMonth = 0;
+      this.usage.chatQueriesThisMonth = 0;
+      this.usage.costThisMonth = 0;
+      this.usage.lastResetDate = now;
+      return true;
+    }
+    return false;
+  }
+
   // Method to check if user can use premium features
   canUsePremiumFeatures() {
     // Check if trial is still active

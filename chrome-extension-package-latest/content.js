@@ -86,6 +86,19 @@ class YouTubeSummarizer {
         
         // Show "Summarize video" button instead of auto-generating
         this.showSummarizeButton();
+
+        // Auto-summarize if enabled in settings (default: true)
+        try {
+          chrome.storage?.local?.get(['auto_summarize'], (result) => {
+            const shouldAuto = result && result.auto_summarize !== false; // default true
+            if (shouldAuto) {
+              // Delay a bit to ensure UI is ready
+              setTimeout(() => this.startSummarization(), 250);
+            }
+          });
+        } catch (e) {
+          // Ignore storage errors; user can click the button
+        }
       } else {
         this.displayError('Neither transcript nor comments are available for this video');
       }
@@ -140,6 +153,20 @@ class YouTubeSummarizer {
       const header = this.summaryContainer.querySelector('#summarizer-header');
       if (header) {
         header.style.display = 'block';
+      }
+
+      // Always switch back to summary view when starting summarization
+      this.showingTranscript = false;
+      this.showingChat = false;
+      const transcriptBtn = this.summaryContainer.querySelector('#transcript-btn');
+      const chatBtn = this.summaryContainer.querySelector('#chat-btn');
+      if (transcriptBtn) {
+        transcriptBtn.innerHTML = '📝 Transcript';
+        transcriptBtn.classList.remove('active');
+      }
+      if (chatBtn) {
+        chatBtn.innerHTML = '💬 Chat';
+        chatBtn.classList.remove('active');
       }
       
       // Show loading state
@@ -635,6 +662,24 @@ class YouTubeSummarizer {
     const totalPoints = sections.reduce((sum, section) => sum + section.points.length, 0);
     console.log('📝 Total points to display:', totalPoints);
     
+    // Cap total points based on current length for better readability
+    const maxPoints = this.currentLength === 'detailed' ? 12 : 6;
+    let collected = 0;
+    const limitedSections = [];
+    for (const section of sections) {
+      if (collected >= maxPoints) break;
+      const remaining = maxPoints - collected;
+      const prunedPoints = section.points
+        // Prefer meaningful points; deprioritize ultra-short items if we have more content
+        .filter(p => typeof p.text === 'string' && p.text.trim().length > 0)
+        .slice(0, remaining);
+      if (prunedPoints.length > 0) {
+        limitedSections.push({ headline: section.headline, points: prunedPoints });
+        collected += prunedPoints.length;
+      }
+    }
+    const finalSections = limitedSections.length > 0 ? limitedSections : sections;
+
     if (totalPoints === 0) {
       // Fallback: split summary into sentences if no structured content found
       const sentences = summary.split(/[.!?]+/).filter(s => s.trim().length > 20);
@@ -667,7 +712,7 @@ class YouTubeSummarizer {
     // Display sections with headers and points
     return `
       <div class="engaging-list">
-        ${sections.map(section => {
+        ${finalSections.map(section => {
           // Check if this section has a meaningful header (not just "Section 1", etc.)
           const hasRealHeader = section.headline && 
                                !section.headline.startsWith('Section ') && 
@@ -825,7 +870,7 @@ class YouTubeSummarizer {
         // Process remaining lines as emoji points
         for (let j = 1; j < lines.length; j++) {
           const line = lines[j];
-          if (/^[🎯🚀🧠💡🎤🌟🔥⚡📈🌐💰🤖🎨🎭🎪📚🎬🎵⚖️🔮🛠️📊]/.test(line)) {
+          if (/^[🎯🚀🧠💡🎤🌟🔥⚡📈🌐💰🤖🎨🎭🎪📚🎬🎵⚖️🔮🛠️📊]/.test(line) || /^•\s+/.test(line)) {
             points.push({ text: line });
           } else if (points.length > 0) {
             // Continue previous point if it's a continuation line
@@ -844,7 +889,7 @@ class YouTubeSummarizer {
         const points = [];
         
         for (const line of lines) {
-          if (/^[🎯🚀🧠💡🎤🌟🔥⚡📈🌐💰🤖🎨🎭🎪📚🎬🎵⚖️🔮🛠️📊]/.test(line)) {
+          if (/^[🎯🚀🧠💡🎤🌟🔥⚡📈🌐💰🤖🎨🎭🎪📚🎬🎵⚖️🔮🛠️📊]/.test(line) || /^•\s+/.test(line)) {
             points.push({ text: line });
           } else if (points.length > 0) {
             // Continue previous point
@@ -2199,11 +2244,11 @@ ${content}
         <h3>Sign In Required</h3>
         <p>Please sign in with Google to use the AI summarizer with secure backend.</p>
         <div class="auth-buttons">
-          <button class="auth-btn-primary" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.initiateSignIn) {window.youtubeSummarizer.initiateSignIn();} else {console.warn('YouTubeSummarizer not loaded, opening sign-in directly'); const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'; const url = isDev ? 'http://localhost:3002/signin' : 'https://www.clicksummary.com/signin'; window.open(url, '_blank');}})();">
+          <button class="auth-btn-primary" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.initiateSignIn) {window.youtubeSummarizer.initiateSignIn();} else {console.warn('YouTubeSummarizer not loaded, opening sign-in directly'); if (window.youtubeSummarizer && window.youtubeSummarizer.openLandingPage) { window.youtubeSummarizer.openLandingPage('/signin'); }}})();">
             <span class="btn-icon">🚀</span>
             Sign In with Google
           </button>
-          <button class="auth-btn-secondary" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.openLandingPage) {window.youtubeSummarizer.openLandingPage();} else {console.warn('YouTubeSummarizer not loaded, opening landing page directly'); const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'; const url = isDev ? 'http://localhost:3002/signin' : 'https://www.clicksummary.com/signin'; window.open(url, '_blank');}})();">
+          <button class="auth-btn-secondary" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.openLandingPage) {window.youtubeSummarizer.openLandingPage('/signin');} else {console.warn('YouTubeSummarizer not loaded');}})();">
             <span class="btn-icon">🌐</span>
             Go to Landing Page
           </button>
@@ -2238,17 +2283,17 @@ ${content}
   openLandingPage() {
     console.log('🌐 Opening landing page for sign-in...');
     
-    // Environment-aware URL detection
-    const isDevelopment = window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1' ||
-                         navigator.userAgent.includes('Development');
-    
-    const landingPageUrl = isDevelopment 
-      ? 'http://localhost:3002/signin'
-      : 'https://www.clicksummary.com/signin';
-    
-    console.log(`🌍 Opening landing page (${isDevelopment ? 'DEV' : 'PROD'}): ${landingPageUrl}`);
-    window.open(landingPageUrl, '_blank');
+    this.getConfig().then((cfg) => {
+      const base = cfg.WEBSITE_URL || 'https://www.clicksummary.com';
+      const path = arguments && arguments[0] ? arguments[0] : '/signin';
+      const landingPageUrl = `${base}${path}`;
+      console.log(`🌍 Opening landing page: ${landingPageUrl}`);
+      window.open(landingPageUrl, '_blank');
+    }).catch(() => {
+      const fallback = 'https://www.clicksummary.com/signin';
+      console.log(`🌍 Opening fallback landing page: ${fallback}`);
+      window.open(fallback, '_blank');
+    });
     
     console.log('✅ Landing page opened in new tab');
     
@@ -2262,7 +2307,7 @@ ${content}
         <div class="error-icon">❌</div>
         <h3>Authentication Error</h3>
         <p>${message}</p>
-        <button class="retry-btn" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.showSignInPrompt) {window.youtubeSummarizer.showSignInPrompt();} else {console.warn('YouTubeSummarizer not loaded, opening sign-in page'); window.open('http://localhost:3002/signin', '_blank');}})();">
+        <button class="retry-btn" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.showSignInPrompt) {window.youtubeSummarizer.showSignInPrompt();} else {console.warn('YouTubeSummarizer not loaded'); if (window.youtubeSummarizer && window.youtubeSummarizer.openLandingPage) { window.youtubeSummarizer.openLandingPage('/signin'); }}})();">
           Try Again
         </button>
       </div>
@@ -2271,6 +2316,27 @@ ${content}
     const summaryContent = this.summaryContainer.querySelector('#summary-content');
     if (summaryContent) {
       summaryContent.innerHTML = errorHTML;
+    }
+  }
+
+  // Helper to get centralized config from background
+  async getConfig() {
+    try {
+      return await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({ action: 'getConfig' }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+            return;
+          }
+          if (!response) {
+            reject(new Error('No config response'));
+            return;
+          }
+          resolve(response);
+        });
+      });
+    } catch (e) {
+      return { WEBSITE_URL: 'https://www.clicksummary.com', API_BASE_URL: 'https://api.clicksummary.com/api' };
     }
   }
 

@@ -1,42 +1,30 @@
 // YouTube Summarizer Popup Script - Multi-Environment Support
 
-// Environment detection for popup
-const detectPopupEnvironment = () => {
-  // In a Chrome extension popup, we can't use window.location, 
-  // so we'll detect based on browser environment indicators
-  const isDevelopment = navigator.userAgent.includes('Development') || 
-                       navigator.userAgent.includes('Chrome') && 
-                       navigator.userAgent.includes('localhost');
-  
-  return {
-    isDevelopment,
-    isProduction: !isDevelopment
-  };
-};
+// Centralized config: request from background
+let WEBSITE_URL = 'https://www.clicksummary.com';
+let BACKEND_URL = 'https://api.clicksummary.com/api';
 
-const getEnvironmentURLs = () => {
-  const env = detectPopupEnvironment();
-  
-  if (env.isDevelopment) {
-    return {
-      WEBSITE_URL: 'http://localhost:3002',
-      BACKEND_URL: 'http://localhost:3001/api'
-    };
-  } else {
-    return {
-      WEBSITE_URL: 'https://www.clicksummary.com',
-      BACKEND_URL: 'https://api.clicksummary.com/api'
-    };
+async function loadConfigFromBackground() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'getConfig' });
+    if (response && response.API_BASE_URL && response.WEBSITE_URL) {
+      BACKEND_URL = response.API_BASE_URL;
+      WEBSITE_URL = response.WEBSITE_URL;
+      console.log(`🌍 Popup Environment: ${response.environment?.isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'}`);
+      console.log(`🌐 Website URL: ${WEBSITE_URL}`);
+      console.log(`🔗 Backend URL: ${BACKEND_URL}`);
+    } else {
+      console.warn('⚠️ getConfig returned incomplete response, using defaults');
+    }
+  } catch (e) {
+    console.warn('⚠️ Failed to load config from background, using defaults', e);
   }
-};
+}
 
-const { WEBSITE_URL, BACKEND_URL } = getEnvironmentURLs();
-
-console.log(`🌍 Popup Environment: ${detectPopupEnvironment().isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'}`);
-console.log(`🌐 Website URL: ${WEBSITE_URL}`);
-console.log(`🔗 Backend URL: ${BACKEND_URL}`);
-
-document.addEventListener('DOMContentLoaded', initializePopup);
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadConfigFromBackground();
+  initializePopup();
+});
 
 async function initializePopup() {
   try {
@@ -502,7 +490,6 @@ function setupAuthenticatedHandlers(authData) {
         }
         
         console.log('🌐 Opening URL:', WEBSITE_URL);
-        
         chrome.tabs.create({ url: WEBSITE_URL }, (tab) => {
           if (chrome.runtime.lastError) {
             console.error('❌ Error creating tab:', chrome.runtime.lastError);

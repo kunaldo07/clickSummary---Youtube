@@ -84,8 +84,12 @@ router.post('/google', async (req, res) => {
       console.log('✅ New user registered:', email);
     }
 
-    // Generate JWT token
-    const token = generateToken(user.id || user._id);
+    // Generate JWT token (embed helpful fields for dev recovery)
+    const token = generateToken(user.id || user._id, {
+      googleId,
+      email,
+      name
+    });
 
     // Return user data and token
     res.json({
@@ -286,7 +290,11 @@ router.post('/google-callback', async (req, res) => {
       console.log('✅ New user registered via OAuth callback:', email);
     }
     
-    const token = generateToken(user.id || user._id);
+    const token = generateToken(user.id || user._id, {
+      googleId,
+      email,
+      name
+    });
     
     res.json({
       success: true,
