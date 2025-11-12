@@ -179,6 +179,73 @@ const FeatureDescription = styled.p`
   line-height: 1.6;
 `;
 
+const TutorialSection = styled.section`
+  padding: 100px 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="1.5" fill="rgba(255,255,255,0.05)"/><circle cx="40" cy="60" r="0.8" fill="rgba(255,255,255,0.08)"/><circle cx="70" cy="30" r="1.2" fill="rgba(255,255,255,0.06)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    pointer-events: none;
+  }
+`;
+
+const TutorialTitle = styled.h2`
+  font-size: 2.5rem;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 24px;
+  color: white;
+  position: relative;
+  z-index: 1;
+`;
+
+const TutorialSubtitle = styled.p`
+  font-size: 1.25rem;
+  text-align: center;
+  margin-bottom: 48px;
+  color: rgba(255, 255, 255, 0.9);
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  z-index: 1;
+`;
+
+const VideoContainer = styled(motion.div)`
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  background: #000;
+`;
+
+const VideoWrapper = styled.div`
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  height: 0;
+  overflow: hidden;
+
+  iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+`;
+
 const ShowcaseSection = styled.section`
   padding: 100px 0;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
@@ -276,6 +343,9 @@ const ShowcaseFeatureItem = styled.li`
 export default function HomePageClient() {
   const { isAuthenticated } = useAuth();
 
+  // YouTube demo tutorial video ID
+  const TUTORIAL_VIDEO_ID = 'xOUZBo2XtAM';
+
   const features = [
     {
       icon: '🤖',
@@ -372,6 +442,30 @@ export default function HomePageClient() {
             </FeaturesGrid>
         </Container>
       </FeaturesSection>
+
+      <TutorialSection>
+        <Container>
+          <TutorialTitle>See ClickSummary in Action</TutorialTitle>
+          <TutorialSubtitle>
+            Watch our quick demo tutorial to learn how to get the most out of ClickSummary's powerful features.
+          </TutorialSubtitle>
+          <VideoContainer
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <VideoWrapper>
+              <iframe
+                src={`https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}?rel=0&modestbranding=1`}
+                title="ClickSummary Demo Tutorial"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </VideoWrapper>
+          </VideoContainer>
+        </Container>
+      </TutorialSection>
 
       <ShowcaseSection>
         <Container>

@@ -34,8 +34,8 @@ const CONFIG = {
   PRIMARY_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   BACKUP_MODEL: process.env.OPENAI_BACKUP_MODEL || 'gpt-3.5-turbo',
   MAX_TOKENS: {
-    short: parseInt(process.env.OPENAI_MAX_TOKENS_SHORT) || 120,
-    detailed: parseInt(process.env.OPENAI_MAX_TOKENS_DETAILED) || 200,
+    short: parseInt(process.env.OPENAI_MAX_TOKENS_SHORT) || 220,
+    detailed: parseInt(process.env.OPENAI_MAX_TOKENS_DETAILED) || 380,
     chat: parseInt(process.env.OPENAI_MAX_TOKENS_CHAT) || 150
   },
   MAX_TRANSCRIPT_LENGTH: parseInt(process.env.MAX_TRANSCRIPT_LENGTH) || 8000,
@@ -276,11 +276,12 @@ async function generateOptimizedSummary({ transcript, type, length, format }) {
     }, 25000);
 
     const summaryText = (completion.choices[0]?.message?.content || '').trim();
+    const cleaned = ensureSummaryCompleteness(summaryText, length);
     const inputTokens = completion.usage?.prompt_tokens || 0;
     const outputTokens = completion.usage?.completion_tokens || 0;
 
     return {
-      summary: summaryText,
+      summary: cleaned,
       inputTokens,
       outputTokens
     };
@@ -307,22 +308,35 @@ async function generateOptimizedSummary({ transcript, type, length, format }) {
       }, 25000);
 
       const summaryText = (completion.choices[0]?.message?.content || '').trim();
+      const cleaned = ensureSummaryCompleteness(summaryText, length);
       const inputTokens = completion.usage?.prompt_tokens || 0;
       const outputTokens = completion.usage?.completion_tokens || 0;
 
       return {
-        summary: summaryText,
+        summary: cleaned,
         inputTokens,
         outputTokens
       };
     } catch (backupError) {
       console.warn(`❌ Backup model failed (${backupError.message}).`);
-      // Development fallback: synthesize a simple summary to avoid 500s locally
+      // Development fallback: synthesize a structured summary to avoid 500s locally
       if (process.env.NODE_ENV === 'development' || !process.env.OPENAI_API_KEY) {
         console.log('🔧 Using development fallback summary generation');
-        const cap = (length === 'detailed') ? 12 : 6;
-        const sentences = String(transcript).split(/[.!?]+/).map(s => s.trim()).filter(Boolean).slice(0, cap);
-        const fallback = sentences.length > 0 ? sentences.map(s => `• ${s}`).join('\n') : 'No content available to summarize.';
+        const total = (length === 'detailed') ? 12 : 6;
+        const sentences = String(transcript)
+          .split(/[.!?]+/)
+          .map(s => s.trim())
+          .filter(Boolean)
+          .slice(0, total);
+        const perSection = Math.max(1, Math.floor(total / 4));
+        const sections = {
+          key: sentences.slice(0, perSection),
+          why: sentences.slice(perSection, perSection * 2),
+          evidence: sentences.slice(perSection * 2, perSection * 3),
+          actions: sentences.slice(perSection * 3, total)
+        };
+        const toBullets = arr => (arr.length ? arr.map(s => `• ${s}`).join('\n') : '• N/A');
+        const fallback = `🎯 Key Ideas\n${toBullets(sections.key)}\n\n📌 Why It Matters\n${toBullets(sections.why)}\n\n🔍 Evidence / Context\n${toBullets(sections.evidence)}\n\n✅ Actionable Takeaways\n${toBullets(sections.actions)}`;
         return { summary: fallback, inputTokens: 0, outputTokens: 0 };
       }
       throw backupError;
@@ -455,16 +469,16 @@ function getOptimizedPromptForGPT4oMini(type, length, format) {
 
   const rules = `You are an expert summarizer. Produce a high-signal summary from the cleaned transcript.
 Output rules:
-- Organize into the following sections with emoji headers:
+- Organize into ALL of the following sections with emoji headers (in this exact order):
   🎯 Key Ideas
   📌 Why It Matters
   🔍 Evidence / Context
   ✅ Actionable Takeaways
-- Under each section, write concise bullet points (1–2 sentences each).
-- Use a total of at most ${totalPoints} bullets across all sections (distribute sensibly).
+- Each section MUST be present with at least 1 bullet. For short summaries, keep 1–2 bullets per section.
+- Write concise bullets (1–2 sentences each). Distribute a total of at most ${totalPoints} bullets across all sections.
 - Do NOT quote the transcript verbatim; synthesize and paraphrase.
-- Remove fluff (e.g., "um", filler), ignore stage directions like [Music], and ignore timestamps.
-- Be complete but tight; no trailing/incomplete bullets. No repeated points.
+- Remove fluff (e.g., "um"), ignore stage directions like [Music], and ignore timestamps.
+- Ensure there are no partial or cut-off bullets; end with a complete bullet.
 - If content is thin, prioritize “🎯 Key Ideas” and “✅ Actionable Takeaways”.`;
 
   const style = (() => {
@@ -489,6 +503,26 @@ function getMaxTokensForLength(length) {
 
 function hashString(str) {
   return crypto.createHash('md5').update(str).digest('hex');
+}
+
+// Ensure all required sections exist and there are no dangling bullets
+function ensureSummaryCompleteness(text, length) {
+  const headers = [
+    '🎯 Key Ideas',
+    '📌 Why It Matters',
+    '🔍 Evidence / Context',
+    '✅ Actionable Takeaways'
+  ];
+  let s = String(text || '').trim();
+  // Add missing headers with at least one bullet
+  headers.forEach((h) => {
+    if (!s.includes(h)) {
+      s += `${s.endsWith('\n') ? '' : '\n\n'}${h}\n• N/A`;
+    }
+  });
+  // Remove a dangling bullet at the end like "\n•" or "\n•   "
+  s = s.replace(/\n•\s*$/, '');
+  return s.trim();
 }
 
 // Get user usage information
