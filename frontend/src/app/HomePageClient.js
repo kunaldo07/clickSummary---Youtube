@@ -344,7 +344,7 @@ export default function HomePageClient() {
   const { isAuthenticated } = useAuth();
 
   // YouTube demo tutorial video ID
-  const TUTORIAL_VIDEO_ID = 'xOUZBo2XtAM';
+  const TUTORIAL_VIDEO_ID = 'AFsacKCxpTA';
 
   const features = [
     {

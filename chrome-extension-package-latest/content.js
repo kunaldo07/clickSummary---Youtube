@@ -122,7 +122,7 @@ class YouTubeSummarizer {
           <p class="summarize-description">Get AI-powered insights, key points, and answers about this video's content.</p>
           <button id="start-summarize-btn" class="start-summarize-btn">
             <span class="btn-icon">✨</span>
-            Summarize video
+            Summarize Video
           </button>
         </div>
       </div>
@@ -149,33 +149,26 @@ class YouTubeSummarizer {
         return;
       }
       
-      // Show the header controls (dropdowns and action buttons)
-      const header = this.summaryContainer.querySelector('#summarizer-header');
-      if (header) {
-        header.style.display = 'block';
+      // Show the dropdown controls
+      const dropdownControls = this.summaryContainer.querySelector('#dropdown-controls');
+      if (dropdownControls) {
+        dropdownControls.style.display = 'grid';
       }
 
-      // Always switch back to summary view when starting summarization
+      // Reset state
       this.showingTranscript = false;
       this.showingChat = false;
-      const transcriptBtn = this.summaryContainer.querySelector('#transcript-btn');
-      const chatBtn = this.summaryContainer.querySelector('#chat-btn');
-      if (transcriptBtn) {
-        transcriptBtn.innerHTML = '📝 Transcript';
-        transcriptBtn.classList.remove('active');
-      }
-      if (chatBtn) {
-        chatBtn.innerHTML = '💬 Chat';
-        chatBtn.classList.remove('active');
+      
+      // Activate summary tab
+      const summaryBtn = this.summaryContainer.querySelector('.icon-btn[data-tab="summary"]');
+      if (summaryBtn) {
+        summaryBtn.classList.add('active');
       }
       
       // Show loading state
       this.showLoadingState();
       
-      // Show the advanced summary UI
-      this.displayAdvancedSummary();
-      
-      // Generate summary for the currently selected type/length
+      // Generate summary
       await this.generateCurrentSummary();
       
     } catch (error) {
@@ -1089,77 +1082,125 @@ class YouTubeSummarizer {
     this.summaryContainer = document.createElement('div');
     this.summaryContainer.id = 'youtube-summarizer-container';
     this.summaryContainer.innerHTML = `
-      <div class="summarizer-header" id="summarizer-header" style="display: none;">
-        <div class="header-controls">
-          <div class="dropdown-row">
-            <div class="dropdown-control">
-              <label>Summary Type</label>
-              <select id="summary-type-select">
-                <option value="insightful">Insightful</option>
-                <option value="funny">Funny</option>
-                <option value="actionable">Actionable</option>
-                <option value="controversial">Controversial</option>
-              </select>
-            </div>
-            
-            <div class="dropdown-control">
-              <label>Format</label>
-              <select id="format-select">
-                <option value="list">List</option>
-                <option value="qa">Q&A</option>
-              </select>
-            </div>
-            
-            <div class="dropdown-control">
-              <label>Length</label>
-              <select id="length-select">
-                <option value="short">Short</option>
-                <option value="detailed">Detailed</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="action-row">
-            <button id="transcript-btn" class="action-btn" title="Show/Hide Transcript">
-              📝 Transcript
-            </button>
-            
-            <button id="chat-btn" class="action-btn" title="Chat about Video">
-              💬 Chat
-            </button>
-            
-            <button id="copy-btn" class="action-btn" title="Copy Summary">
-              📋
-            </button>
-            
-            <div class="export-dropdown">
-              <button id="export-btn" class="action-btn" title="Export Options">
-                📤 Export ▼
+      <div class="summarizer-card">
+        <div class="summarizer-header">
+          <div class="header-top">
+            <div class="header-icons">
+              <button class="icon-btn" data-tab="summary" title="Summary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
               </button>
-              <div id="export-menu" class="export-menu" style="display: none;">
-                <div class="export-section">
-                  <div class="export-section-title">Copy</div>
-                  <button class="export-option" data-action="copy-link">Link</button>
-                  <button class="export-option" data-action="copy-text">Text</button>
-                </div>
-                <div class="export-section">
-                  <div class="export-section-title">Export</div>
-                  <button class="export-option" data-action="export-txt">Txt</button>
-                  <button class="export-option" data-action="export-doc">Doc</button>
-                  <button class="export-option" data-action="export-pdf">PDF</button>
-                  <button class="export-option" data-action="export-markdown">Markdown</button>
+              <button class="icon-btn" data-tab="transcript" title="Transcript">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <line x1="12" y1="9" x2="8" y2="9"></line>
+                </svg>
+              </button>
+              <button class="icon-btn" data-tab="chat" title="Chat">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </button>
+              <button class="icon-btn" data-tab="copy" title="Copy">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+              <div class="export-dropdown-wrapper">
+                <button class="icon-btn" id="export-toggle-btn" title="Export">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                </button>
+                <div class="export-dropdown-menu" id="export-dropdown-menu" style="display: none;">
+                  <button class="export-menu-item" data-action="copy-link">
+                    <svg class="export-menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                    <span>Copy Link</span>
+                  </button>
+                  <button class="export-menu-item" data-action="copy-text">
+                    <svg class="export-menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span>Copy Text</span>
+                  </button>
+                  <button class="export-menu-item" data-action="export-txt">
+                    <svg class="export-menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    <span>Export TXT</span>
+                  </button>
+                  <button class="export-menu-item" data-action="export-doc">
+                    <svg class="export-menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="12" y1="18" x2="12" y2="12"></line>
+                      <line x1="9" y1="15" x2="15" y2="15"></line>
+                    </svg>
+                    <span>Export DOC</span>
+                  </button>
+                  <button class="export-menu-item" data-action="export-pdf">
+                    <svg class="export-menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <path d="M9 15h6"></path>
+                      <path d="M12 18v-6"></path>
+                    </svg>
+                    <span>Export PDF</span>
+                  </button>
+                  <button class="export-menu-item" data-action="export-markdown">
+                    <svg class="export-menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <path d="M10 12h4"></path>
+                      <path d="M10 16h4"></path>
+                    </svg>
+                    <span>Export MD</span>
+                  </button>
                 </div>
               </div>
             </div>
+            <div class="user-avatar-placeholder"></div>
+          </div>
+          
+          <!-- Dropdown Controls (hidden by default) -->
+          <div class="dropdown-controls" id="dropdown-controls" style="display: none;">
+            <select id="summary-type-select" class="summary-dropdown">
+              <option value="insightful">Insightful</option>
+              <option value="funny">Funny</option>
+              <option value="actionable">Actionable</option>
+              <option value="controversial">Controversial</option>
+            </select>
+            
+            <select id="format-select" class="summary-dropdown">
+              <option value="list">List</option>
+              <option value="qa">Q&A</option>
+            </select>
+            
+            <select id="length-select" class="summary-dropdown">
+              <option value="short">Short</option>
+              <option value="detailed">Detailed</option>
+            </select>
           </div>
         </div>
-      </div>
 
-      <div class="summary-display-panel">
-        <div id="summary-content">
-          <div class="loading-summary">
-            <div class="loading-spinner"></div>
-            <span>Generating AI summary...</span>
+        <div class="summarizer-body">
+          <div id="summary-content">
+            <div class="loading-summary">
+              <div class="loading-spinner"></div>
+              <span>Generating AI summary...</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1172,84 +1213,77 @@ class YouTubeSummarizer {
   }
 
   attachEventListeners() {
-    // Summary Type dropdown
-    const summaryTypeSelect = this.summaryContainer.querySelector('#summary-type-select');
-    summaryTypeSelect.addEventListener('change', async (e) => {
-      this.currentSummaryType = e.target.value;
-      console.log(`🎭 Summary type changed to: ${this.currentSummaryType}`);
-      
-      // Generate summary for the new type if we don't have it
-      await this.generateCurrentSummary();
-    });
-
-    // Format dropdown
-    const formatSelect = this.summaryContainer.querySelector('#format-select');
-    formatSelect.addEventListener('change', (e) => {
-      this.currentFormat = e.target.value;
-      console.log(`📋 Format changed to: ${this.currentFormat}`);
-      
-      // Just update display format, no need to regenerate summary
-      this.updateSummaryDisplay();
-    });
-
-    // Length dropdown
-    const lengthSelect = this.summaryContainer.querySelector('#length-select');
-    lengthSelect.addEventListener('change', async (e) => {
-      this.currentLength = e.target.value;
-      console.log(`📏 Length changed to: ${this.currentLength}`);
-      
-      // Generate summary for the new length if we don't have it
-      await this.generateCurrentSummary();
-    });
-    
-    // Transcript button
-    const transcriptBtn = this.summaryContainer.querySelector('#transcript-btn');
-    
-    transcriptBtn.addEventListener('click', () => {
-      this.toggleTranscript();
-    });
-
-    // Chat button
-    const chatBtn = this.summaryContainer.querySelector('#chat-btn');
-    
-    chatBtn.addEventListener('click', () => {
-      this.toggleChat();
-    });
-    
-    // Initialize chat button indicator
-    this.updateChatButtonIndicator();
-
-    // Copy button
-    const copyBtn = this.summaryContainer.querySelector('#copy-btn');
-    copyBtn.addEventListener('click', () => {
-      this.copySummaryToClipboard();
+    // Icon tab buttons
+    const iconBtns = this.summaryContainer.querySelectorAll('.icon-btn[data-tab]');
+    iconBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tab = e.currentTarget.dataset.tab;
+        this.switchTab(tab);
+      });
     });
 
     // Export dropdown toggle
-    const exportBtn = this.summaryContainer.querySelector('#export-btn');
-    const exportMenu = this.summaryContainer.querySelector('#export-menu');
+    const exportToggleBtn = this.summaryContainer.querySelector('#export-toggle-btn');
+    const exportDropdownMenu = this.summaryContainer.querySelector('#export-dropdown-menu');
     
-    exportBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      exportMenu.style.display = exportMenu.style.display === 'none' ? 'block' : 'none';
-    });
+    if (exportToggleBtn && exportDropdownMenu) {
+      exportToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isVisible = exportDropdownMenu.style.display === 'block';
+        exportDropdownMenu.style.display = isVisible ? 'none' : 'block';
+        exportToggleBtn.classList.toggle('active', !isVisible);
+      });
 
-    // Close export menu when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.export-dropdown')) {
-        exportMenu.style.display = 'none';
-      }
-    });
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.export-dropdown-wrapper')) {
+          exportDropdownMenu.style.display = 'none';
+          exportToggleBtn.classList.remove('active');
+        }
+      });
+    }
 
-    // Export options
-    const exportOptions = this.summaryContainer.querySelectorAll('.export-option');
-    exportOptions.forEach(option => {
-      option.addEventListener('click', (e) => {
-        const action = e.target.dataset.action;
+    // Export menu items
+    const exportMenuItems = this.summaryContainer.querySelectorAll('.export-menu-item');
+    exportMenuItems.forEach(item => {
+      item.addEventListener('click', (e) => {
+        const action = e.currentTarget.dataset.action;
         this.handleExportAction(action);
-        exportMenu.style.display = 'none';
+        // Close dropdown after action
+        exportDropdownMenu.style.display = 'none';
+        exportToggleBtn.classList.remove('active');
       });
     });
+
+    // Dropdown for summary type
+    const summaryTypeSelect = this.summaryContainer.querySelector('#summary-type-select');
+    if (summaryTypeSelect) {
+      summaryTypeSelect.addEventListener('change', async (e) => {
+        this.currentSummaryType = e.target.value;
+        console.log(`🎭 Summary type changed to: ${this.currentSummaryType}`);
+        await this.generateCurrentSummary();
+      });
+    }
+
+    // Dropdown for format
+    const formatSelect = this.summaryContainer.querySelector('#format-select');
+    if (formatSelect) {
+      formatSelect.addEventListener('change', (e) => {
+        this.currentFormat = e.target.value;
+        console.log(`📋 Format changed to: ${this.currentFormat}`);
+        this.updateSummaryDisplay();
+      });
+    }
+
+    // Dropdown for length
+    const lengthSelect = this.summaryContainer.querySelector('#length-select');
+    if (lengthSelect) {
+      lengthSelect.addEventListener('change', async (e) => {
+        this.currentLength = e.target.value;
+        console.log(`📏 Length changed to: ${this.currentLength}`);
+        await this.generateCurrentSummary();
+      });
+    }
 
     // Add timestamp click handlers (will be added dynamically)
     this.summaryContainer.addEventListener('click', (e) => {
@@ -1260,6 +1294,61 @@ class YouTubeSummarizer {
         }
       }
     });
+  }
+
+  switchTab(tab) {
+    // Update active icon button
+    const iconBtns = this.summaryContainer.querySelectorAll('.icon-btn[data-tab]');
+    iconBtns.forEach(btn => {
+      if (btn.dataset.tab === tab) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    // Hide all panels
+    const summaryContent = this.summaryContainer.querySelector('#summary-content');
+    const dropdownControls = this.summaryContainer.querySelector('#dropdown-controls');
+    
+    summaryContent.style.display = 'none';
+
+    // Show appropriate content based on tab
+    switch(tab) {
+      case 'summary':
+        summaryContent.style.display = 'block';
+        dropdownControls.style.display = 'grid';
+        this.showingTranscript = false;
+        this.showingChat = false;
+        
+        // If no summary exists, show loading and generate
+        if (!this.summaries || !this.summaries[this.currentSummaryType] || !this.summaries[this.currentSummaryType][this.currentLength]) {
+          this.showLoadingState();
+          this.generateCurrentSummary();
+        } else {
+          this.updateSummaryDisplay();
+        }
+        break;
+      case 'transcript':
+        summaryContent.style.display = 'block';
+        dropdownControls.style.display = 'none';
+        this.showingTranscript = true;
+        this.showingChat = false;
+        this.displayTranscriptInSummaryPanel();
+        break;
+      case 'chat':
+        summaryContent.style.display = 'block';
+        dropdownControls.style.display = 'none';
+        this.showingChat = true;
+        this.showingTranscript = false;
+        this.displayChatInSummaryPanel();
+        break;
+      case 'copy':
+        this.copySummaryToClipboard();
+        // Switch back to summary tab after copying
+        setTimeout(() => this.switchTab('summary'), 500);
+        break;
+    }
   }
 
   jumpToTime(timeString) {
@@ -1605,6 +1694,12 @@ class YouTubeSummarizer {
     });
   }
 
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   downloadFile(content, filename, mimeType) {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -1619,34 +1714,178 @@ class YouTubeSummarizer {
   }
 
   exportAsDoc(content, title) {
-    // Simple RTF format for .doc files
-    const rtfContent = `{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Times New Roman;}} \\f0\\fs24 ${content.replace(/\n/g, '\\par ')}}`;
-    this.downloadFile(rtfContent, `${title}.doc`, 'application/msword');
+    const videoTitle = document.querySelector('h1.ytd-watch-metadata')?.textContent || 'YouTube Video';
+    const videoUrl = window.location.href;
+    
+    // Remove emojis and special Unicode characters for DOC compatibility
+    const cleanContent = content
+      .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // Remove emojis
+      .replace(/[\u{2600}-\u{26FF}]/gu, '')  // Remove misc symbols
+      .replace(/[\u{2700}-\u{27BF}]/gu, '')  // Remove dingbats
+      .trim();
+    
+    // Format content with proper paragraphs and lists
+    let formattedContent = cleanContent
+      .split('\n')
+      .map(line => {
+        line = line.trim();
+        if (!line) return '';
+        
+        // Check if line is a bullet point or numbered list
+        if (line.match(/^[-•*]\s/)) {
+          return `<li>${line.replace(/^[-•*]\s/, '')}</li>`;
+        } else if (line.match(/^\d+\.\s/)) {
+          return `<li>${line.replace(/^\d+\.\s/, '')}</li>`;
+        } else if (line.match(/^[A-Z][^.!?]*[:.]/)) {
+          // Likely a heading or section title
+          return `<p style="font-weight: bold; margin-top: 12pt;">${line}</p>`;
+        } else {
+          return `<p>${line}</p>`;
+        }
+      })
+      .join('\n');
+    
+    // Wrap consecutive <li> elements in <ul>
+    formattedContent = formattedContent.replace(/(<li>.*?<\/li>\n?)+/g, (match) => {
+      return `<ul>${match}</ul>`;
+    });
+    
+    // Create HTML-based DOC with proper Word XML namespace
+    const htmlDoc = `
+<html xmlns:o='urn:schemas-microsoft-com:office:office' 
+      xmlns:w='urn:schemas-microsoft-com:office:word' 
+      xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+  <meta charset='utf-8'>
+  <title>${this.escapeHtml(title)}</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    body { 
+      font-family: Calibri, Arial, sans-serif; 
+      font-size: 11pt; 
+      line-height: 1.6;
+      margin: 1in;
+    }
+    h1 { 
+      font-size: 18pt; 
+      font-weight: bold; 
+      color: #2c3e50;
+      margin-bottom: 12pt;
+      border-bottom: 2pt solid #3498db;
+      padding-bottom: 6pt;
+    }
+    h2 {
+      font-size: 14pt;
+      font-weight: bold;
+      color: #34495e;
+      margin-top: 12pt;
+      margin-bottom: 6pt;
+    }
+    p { 
+      margin: 6pt 0; 
+      text-align: justify;
+    }
+    ul {
+      margin: 6pt 0;
+      padding-left: 24pt;
+    }
+    li {
+      margin: 3pt 0;
+    }
+    .footer {
+      margin-top: 24pt;
+      padding-top: 12pt;
+      border-top: 1pt solid #bdc3c7;
+      font-size: 9pt;
+      color: #7f8c8d;
+    }
+  </style>
+</head>
+<body>
+  <h1>${this.escapeHtml(videoTitle)}</h1>
+  
+  <div class="content">
+    ${formattedContent}
+  </div>
+  
+  <div class="footer">
+    <p><strong>Source:</strong> ${this.escapeHtml(videoUrl)}</p>
+    <p><strong>Generated:</strong> ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+    <p><strong>Powered by:</strong> ClickSummary AI</p>
+  </div>
+</body>
+</html>
+    `;
+    
+    const blob = new Blob(['\ufeff', htmlDoc], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.showToast(`📄 Downloaded ${title}.doc`);
   }
 
   exportAsPDF(content, title) {
-    // For now, we'll create a simple HTML version that can be printed as PDF
-    // In a full implementation, you'd use a PDF library
+    // Create HTML with proper UTF-8 encoding for emojis
     const htmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
+        <meta charset="UTF-8">
         <title>${title}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-          h1 { color: #333; border-bottom: 2px solid #333; }
-          .summary { white-space: pre-wrap; }
+          @media print {
+            body { margin: 0; }
+          }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
+            margin: 40px; 
+            line-height: 1.6;
+            color: #333;
+          }
+          h1 { 
+            color: #333; 
+            border-bottom: 2px solid #8b5cf6; 
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+          }
+          .summary { 
+            white-space: pre-wrap; 
+            font-size: 14px;
+          }
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+          }
         </style>
       </head>
       <body>
-        <h1>${title}</h1>
-        <div class="summary">${content}</div>
+        <h1>${this.escapeHtml(title)}</h1>
+        <div class="summary">${this.escapeHtml(content)}</div>
+        <div class="footer">
+          <p>Generated by ClickSummary AI on ${new Date().toLocaleDateString()}</p>
+          <p>Source: ${window.location.href}</p>
+        </div>
         <script>window.print();</script>
       </body>
       </html>
     `;
     
-    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
     this.showToast('🖨️ PDF preview opened - use browser print to save as PDF');
