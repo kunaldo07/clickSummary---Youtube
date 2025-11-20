@@ -1044,6 +1044,14 @@ class YouTubeSummarizer {
         action: 'summarizeTimestamped',
         data: data
       }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error('Extension was reloaded. Please refresh the page and try again.'));
+          return;
+        }
+        if (!response) {
+          reject(new Error('No response from extension. Please refresh the page.'));
+          return;
+        }
         if (response.error) {
           reject(new Error(response.error));
         } else {
@@ -1060,6 +1068,14 @@ class YouTubeSummarizer {
         transcript: transcript,
         videoId: this.currentVideoId
       }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error('Extension was reloaded. Please refresh the page and try again.'));
+          return;
+        }
+        if (!response) {
+          reject(new Error('No response from extension. Please refresh the page.'));
+          return;
+        }
         if (response.error) {
           reject(new Error(response.error));
         } else {
@@ -2331,16 +2347,33 @@ ${content}
     };
 
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage({
-        action: 'chatQuery',
-        data: data
-      }, (response) => {
-        if (response.error) {
-          reject(new Error(response.error));
-        } else {
-          resolve(response.answer);
-        }
-      });
+      try {
+        chrome.runtime.sendMessage({
+          action: 'chatQuery',
+          data: data
+        }, (response) => {
+          // Check for extension context invalidation
+          if (chrome.runtime.lastError) {
+            console.error('❌ Chrome runtime error:', chrome.runtime.lastError);
+            reject(new Error('Extension was reloaded. Please refresh the page and try again.'));
+            return;
+          }
+          
+          if (!response) {
+            reject(new Error('No response from extension. Please refresh the page.'));
+            return;
+          }
+          
+          if (response.error) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response.answer);
+          }
+        });
+      } catch (error) {
+        console.error('❌ Error sending chat message:', error);
+        reject(new Error('Extension connection lost. Please refresh the page.'));
+      }
     });
   }
 
@@ -2358,6 +2391,14 @@ ${content}
   }
 
   formatUserFriendlyError(errorMessage, type = 'general') {
+    // Check for extension reload/context invalidation errors
+    if (errorMessage.includes('Extension was reloaded') || 
+        errorMessage.includes('Extension context invalidated') || 
+        errorMessage.includes('Extension connection lost') ||
+        errorMessage.includes('refresh the page')) {
+      return `🔄 Extension was updated or reloaded. Please <strong>refresh this page</strong> (F5) to continue using ClickSummary.`;
+    }
+    
     // Check for daily limit errors
     if (errorMessage.includes('Daily limit reached') || errorMessage.includes('Daily chat limit reached')) {
       if (type === 'chat') {
@@ -2479,22 +2520,15 @@ ${content}
   showSignInPrompt() {
     const signInHTML = `
       <div class="auth-prompt">
-        <div class="auth-icon">🔐</div>
-        <h3>Sign In Required</h3>
-        <p>Please sign in with Google to use the AI summarizer with secure backend.</p>
+        <div class="auth-icon">✨</div>
+        <h3>Unlock AI-Powered Summaries</h3>
+        <p>Sign in to get instant AI summaries, key insights, and chat with any YouTube video.</p>
         <div class="auth-buttons">
-          <button class="auth-btn-primary" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.initiateSignIn) {window.youtubeSummarizer.initiateSignIn();} else {console.warn('YouTubeSummarizer not loaded, opening sign-in directly'); if (window.youtubeSummarizer && window.youtubeSummarizer.openLandingPage) { window.youtubeSummarizer.openLandingPage('/signin'); }}})();">
+          <button class="auth-btn-primary" id="auth-signin-btn">
             <span class="btn-icon">🚀</span>
             Sign In with Google
           </button>
-          <button class="auth-btn-secondary" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.openLandingPage) {window.youtubeSummarizer.openLandingPage('/signin');} else {console.warn('YouTubeSummarizer not loaded');}})();">
-            <span class="btn-icon">🌐</span>
-            Go to Landing Page
-          </button>
         </div>
-        <p class="auth-note">
-          <small>🔒 Your API keys are never exposed. All processing happens securely on our backend.</small>
-        </p>
       </div>
     `;
 
@@ -2502,6 +2536,16 @@ ${content}
     const summaryContent = this.summaryContainer.querySelector('#summary-content');
     if (summaryContent) {
       summaryContent.innerHTML = signInHTML;
+      
+      // Attach event listener to button
+      const signInBtn = summaryContent.querySelector('#auth-signin-btn');
+      
+      if (signInBtn) {
+        signInBtn.addEventListener('click', () => {
+          console.log('🔐 Sign in button clicked');
+          this.initiateSignIn();
+        });
+      }
     }
   }
 
@@ -2546,7 +2590,8 @@ ${content}
         <div class="error-icon">❌</div>
         <h3>Authentication Error</h3>
         <p>${message}</p>
-        <button class="retry-btn" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.showSignInPrompt) {window.youtubeSummarizer.showSignInPrompt();} else {console.warn('YouTubeSummarizer not loaded'); if (window.youtubeSummarizer && window.youtubeSummarizer.openLandingPage) { window.youtubeSummarizer.openLandingPage('/signin'); }}})();">
+        <button class="retry-btn" id="auth-retry-btn">
+          <span class="btn-icon">🔄</span>
           Try Again
         </button>
       </div>
@@ -2555,6 +2600,15 @@ ${content}
     const summaryContent = this.summaryContainer.querySelector('#summary-content');
     if (summaryContent) {
       summaryContent.innerHTML = errorHTML;
+      
+      // Attach event listener
+      const retryBtn = summaryContent.querySelector('#auth-retry-btn');
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+          console.log('🔄 Retry button clicked');
+          this.showSignInPrompt();
+        });
+      }
     }
   }
 
@@ -2582,10 +2636,10 @@ ${content}
   showAuthMessage(message) {
     const messageHTML = `
       <div class="auth-message">
-        <div class="message-icon">ℹ️</div>
-        <h3>Action Required</h3>
+        <div class="message-icon">✅</div>
+        <h3>Almost There!</h3>
         <p>${message}</p>
-        <button class="refresh-btn" onclick="(function(){if(window.youtubeSummarizer && window.youtubeSummarizer.checkAndRetry) {window.youtubeSummarizer.checkAndRetry();} else {console.warn('YouTubeSummarizer not loaded, please refresh the page');}})();">
+        <button class="refresh-btn" id="auth-refresh-btn">
           <span class="btn-icon">🔄</span>
           I've Signed In - Try Again
         </button>
@@ -2595,6 +2649,15 @@ ${content}
     const summaryContent = this.summaryContainer.querySelector('#summary-content');
     if (summaryContent) {
       summaryContent.innerHTML = messageHTML;
+      
+      // Attach event listener
+      const refreshBtn = summaryContent.querySelector('#auth-refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          console.log('🔄 Refresh button clicked');
+          this.checkAndRetry();
+        });
+      }
     }
   }
 

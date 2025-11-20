@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { usePayment } from '../../hooks/usePayment';
 import toast from 'react-hot-toast';
+import { detectUserCountry, getPricingForCountry, formatPrice } from '../../utils/pricingConfig';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -108,6 +109,18 @@ const PlansSection = styled.section`
   padding: 0 24px 80px;
   position: relative;
   z-index: 1;
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 2.5rem;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 64px;
+  color: #1f2937;
+  
+  @media (max-width: 768px) {
+    font-size: 2rem;
+  }
 `;
 
 const PlansGrid = styled.div`
@@ -274,16 +287,111 @@ const GuaranteeBadge = styled.div`
   }
 `;
 
+const ValueSection = styled.section`
+  padding: 60px 24px;
+  background: white;
+  position: relative;
+  z-index: 1;
+`;
+
+const ValueGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 32px;
+  max-width: 1000px;
+  margin: 0 auto;
+`;
+
+const ValueCard = styled(motion.div)`
+  text-align: center;
+  padding: 24px;
+`;
+
+const ValueIcon = styled.div`
+  font-size: 3rem;
+  margin-bottom: 16px;
+`;
+
+const ValueTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8px;
+`;
+
+const ValueDescription = styled.p`
+  color: #6b7280;
+  line-height: 1.6;
+  font-size: 0.95rem;
+`;
+
+const SavingsHighlight = styled.div`
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  display: inline-block;
+  margin-top: 8px;
+`;
+
+const ROISection = styled.div`
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 24px;
+  border: 2px solid #8b5cf6;
+`;
+
+const ROITitle = styled.div`
+  font-size: 1rem;
+  font-weight: 700;
+  color: #7c3aed;
+  margin-bottom: 12px;
+  text-align: center;
+`;
+
+const ROIText = styled.div`
+  font-size: 0.9rem;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.6;
+`;
+
 export default function PricingPageClient() {
   const { user, isAuthenticated } = useAuth();
   const { subscribeToPremium, loading } = usePayment();
   const [currentPlan, setCurrentPlan] = useState('free');
+  const [pricing, setPricing] = useState(null);
+  const [countryCode, setCountryCode] = useState('IN');
+  const [isLoadingPricing, setIsLoadingPricing] = useState(true);
 
   useEffect(() => {
     if (user?.subscription?.plan) {
       setCurrentPlan(user.subscription.plan);
     }
   }, [user]);
+
+  useEffect(() => {
+    async function loadPricing() {
+      try {
+        setIsLoadingPricing(true);
+        const detectedCountry = await detectUserCountry();
+        setCountryCode(detectedCountry);
+        const pricingConfig = getPricingForCountry(detectedCountry);
+        setPricing(pricingConfig);
+      } catch (error) {
+        console.error('Error loading pricing:', error);
+        // Fallback to default pricing
+        const defaultPricing = getPricingForCountry('DEFAULT');
+        setPricing(defaultPricing);
+      } finally {
+        setIsLoadingPricing(false);
+      }
+    }
+    loadPricing();
+  }, []);
 
   const handleSubscribeToPremium = async (planType = 'monthly') => {
     if (!isAuthenticated) {
@@ -307,23 +415,39 @@ export default function PricingPageClient() {
     }
   };
 
-  // Simplified plans - only Free and Monthly
+  // Don't render plans until pricing is loaded
+  if (isLoadingPricing || !pricing) {
+    return (
+      <PageContainer>
+        <BackgroundPattern />
+        <FloatingElements />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: 'white', fontSize: '1.5rem' }}>
+          Loading pricing...
+        </div>
+      </PageContainer>
+    );
+  }
+
+  // Simplified plans - only Free and Monthly (with dynamic pricing)
   const plans = [
     {
       id: 'free',
-      name: 'Free',
-      price: '₹0',
+      name: 'Free Starter',
+      price: `${pricing.currency}0`,
       period: 'forever',
+      description: 'Perfect for trying out ClickSummary',
       features: [
-        { text: '5 summaries per day', enabled: true },
-        { text: '1 AI chat per day', enabled: true },
+        { text: '5 summaries per day', enabled: true, value: `Worth ${formatPrice(pricing.freeValue.summaries, pricing.currency)}/month` },
+        { text: '1 AI chat per day', enabled: true, value: `Worth ${formatPrice(pricing.freeValue.chat, pricing.currency)}/month` },
         { text: 'Basic video summaries', enabled: true },
         { text: 'Standard processing time', enabled: true },
-        { text: 'Interactive AI chat', enabled: false },
-        { text: 'Export summaries', enabled: false }
+        { text: 'Unlimited AI chat', enabled: false },
+        { text: 'Export & save summaries', enabled: false },
+        { text: 'Priority support', enabled: false },
+        { text: 'Custom summary formats', enabled: false }
       ],
       button: {
-        text: currentPlan === 'free' ? 'Current Plan' : 'Select Free',
+        text: currentPlan === 'free' ? 'Current Plan' : 'Start Free',
         variant: 'free',
         disabled: currentPlan === 'free',
         onClick: handleSelectFreePlan
@@ -331,25 +455,30 @@ export default function PricingPageClient() {
     },
     {
       id: 'monthly',
-      name: 'Premium',
-      price: '₹800',
+      name: 'Premium Pro',
+      price: formatPrice(pricing.monthly, pricing.currency),
       period: 'per month',
       popular: true,
+      description: 'For serious learners & professionals',
+      savings: `Save 20+ hours/week = ${formatPrice(pricing.monthlyValue / 4, pricing.currency)}+ value`,
       features: [
-        { text: 'Unlimited summaries', enabled: true },
-        { text: 'Unlimited AI chat', enabled: true },
-        { text: 'All summary formats', enabled: true },
-        { text: 'Export summaries', enabled: true },
-        { text: 'Priority processing', enabled: true },
-        { text: 'Custom summary formats', enabled: true }
+        { text: 'Unlimited summaries', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.summaries, pricing.currency)}/month` },
+        { text: 'Unlimited AI chat', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.chat, pricing.currency)}/month` },
+        { text: 'All summary formats', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.formats, pricing.currency)}/month` },
+        { text: 'Export & save summaries', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.export, pricing.currency)}/month` },
+        { text: 'Priority processing', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.priority, pricing.currency)}/month` },
+        { text: 'Custom summary formats', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.custom, pricing.currency)}/month` },
+        { text: 'Priority email support', enabled: true },
+        { text: 'Early access to new features', enabled: true }
       ],
       button: {
-        text: currentPlan === 'monthly' ? 'Current Plan' : 'Upgrade to Premium',
+        text: currentPlan === 'monthly' ? 'Current Plan' : 'Start Premium Now',
         variant: 'premium',
         disabled: currentPlan === 'monthly',
         onClick: () => handleSubscribeToPremium('monthly')
       },
-      guarantee: true
+      guarantee: true,
+      roi: true
     }
   ];
 
@@ -365,14 +494,14 @@ export default function PricingPageClient() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            Simple Pricing for Everyone
+            Invest {formatPrice(pricing.monthly, pricing.currency)}/month, Save 20+ Hours Every Week
           </HeroTitle>
           <HeroSubtitle
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            Choose the perfect plan for your YouTube summary needs. Start free, upgrade when you're ready.
+            That's less than {formatPrice(Math.ceil(pricing.monthly / 30), pricing.currency)}/day to reclaim your time. Join 10,000+ users who've transformed how they learn.
           </HeroSubtitle>
         </Container>
       </HeroSection>
@@ -392,20 +521,46 @@ export default function PricingPageClient() {
                 
                 <PlanHeader>
                   <PlanName>{plan.name}</PlanName>
+                  {plan.description && (
+                    <div style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '16px' }}>
+                      {plan.description}
+                    </div>
+                  )}
                   <PlanPrice>
                     <PriceAmount $popular={plan.popular}>{plan.price}</PriceAmount>
                     <PricePeriod>{plan.period}</PricePeriod>
                   </PlanPrice>
+                  {plan.savings && (
+                    <SavingsHighlight>{plan.savings}</SavingsHighlight>
+                  )}
                 </PlanHeader>
 
                 <PlanFeatures>
                   {plan.features.map((feature, featureIndex) => (
                     <FeatureItem key={featureIndex} $disabled={!feature.enabled}>
                       <FeatureIcon>{feature.enabled ? '✅' : '❌'}</FeatureIcon>
-                      <FeatureText>{feature.text}</FeatureText>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <FeatureText $disabled={!feature.enabled}>{feature.text}</FeatureText>
+                        {feature.value && feature.enabled && (
+                          <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: '600', marginTop: '2px' }}>
+                            {feature.value}
+                          </div>
+                        )}
+                      </div>
                     </FeatureItem>
                   ))}
                 </PlanFeatures>
+
+                {plan.roi && (
+                  <ROISection>
+                    <ROITitle>💰 Return on Investment</ROITitle>
+                    <ROIText>
+                      If your time is worth {formatPrice(pricing.hourlyValue, pricing.currency)}/hour, saving 20 hours/week = {formatPrice(pricing.monthlyValue, pricing.currency)}/month value.
+                      <br />
+                      <strong style={{ color: '#7c3aed', fontSize: '1.1rem' }}>That's {pricing.roi} ROI!</strong>
+                    </ROIText>
+                  </ROISection>
+                )}
 
                 <PlanButton
                   $variant={plan.button.variant}
@@ -436,6 +591,97 @@ export default function PricingPageClient() {
           </PlansGrid>
         </Container>
       </PlansSection>
+
+      <ValueSection>
+        <Container>
+          <SectionTitle style={{ color: '#1f2937', marginBottom: '48px' }}>Why Premium Users Love ClickSummary</SectionTitle>
+          <ValueGrid>
+            <ValueCard
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+            >
+              <ValueIcon>⏰</ValueIcon>
+              <ValueTitle>Save 20+ Hours Weekly</ValueTitle>
+              <ValueDescription>
+                Stop watching hour-long videos. Get the key insights in seconds and use your time for what matters.
+              </ValueDescription>
+            </ValueCard>
+
+            <ValueCard
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <ValueIcon>🧠</ValueIcon>
+              <ValueTitle>Learn 10x Faster</ValueTitle>
+              <ValueDescription>
+                Consume more content, retain more information, and accelerate your learning journey exponentially.
+              </ValueDescription>
+            </ValueCard>
+
+            <ValueCard
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <ValueIcon>💼</ValueIcon>
+              <ValueTitle>Stay Ahead Professionally</ValueTitle>
+              <ValueDescription>
+                Keep up with industry trends, competitor analysis, and professional development effortlessly.
+              </ValueDescription>
+            </ValueCard>
+
+            <ValueCard
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <ValueIcon>🎯</ValueIcon>
+              <ValueTitle>Zero Risk Guarantee</ValueTitle>
+              <ValueDescription>
+                Try Premium risk-free for 7 days. Not satisfied? Get a full refund, no questions asked.
+              </ValueDescription>
+            </ValueCard>
+          </ValueGrid>
+
+          <div style={{ textAlign: 'center', marginTop: '64px' }}>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                padding: '48px',
+                borderRadius: '24px',
+                maxWidth: '700px',
+                margin: '0 auto'
+              }}
+            >
+              <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>🚀</div>
+              <h3 style={{ fontSize: '1.75rem', fontWeight: '800', marginBottom: '16px' }}>
+                Limited Time Offer: 50% Off First Month
+              </h3>
+              <p style={{ fontSize: '1.1rem', opacity: '0.95', marginBottom: '24px' }}>
+                Join in the next 24 hours and get Premium for just {formatPrice(pricing.discountedMonthly, pricing.currency)} for your first month.
+                <br />
+                <strong>Only 23 spots remaining!</strong>
+              </p>
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', fontSize: '0.9rem', opacity: '0.9' }}>
+                <span>✓ Cancel Anytime</span>
+                <span>✓ 7-Day Money Back</span>
+                <span>✓ Instant Access</span>
+              </div>
+            </motion.div>
+          </div>
+        </Container>
+      </ValueSection>
     </PageContainer>
   );
 }

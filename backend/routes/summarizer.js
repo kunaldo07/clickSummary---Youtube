@@ -466,35 +466,49 @@ function calculateCost(inputTokens, outputTokens) {
 
 function getOptimizedPromptForGPT4oMini(type, length, format) {
   const totalPoints = length === 'detailed' ? 12 : 6;
+  const sections = length === 'detailed' ? '3–4 sections' : '2–3 sections';
 
-  const rules = `You are an expert summarizer. Produce a high-signal summary from the cleaned transcript.
-Output rules:
-- Organize into ALL of the following sections with emoji headers (in this exact order):
-  🎯 Key Ideas
-  📌 Why It Matters
-  🔍 Evidence / Context
-  ✅ Actionable Takeaways
-- Each section MUST be present with at least 1 bullet. For short summaries, keep 1–2 bullets per section.
-- Write concise bullets (1–2 sentences each). Distribute a total of at most ${totalPoints} bullets across all sections.
-- Do NOT quote the transcript verbatim; synthesize and paraphrase.
-- Remove fluff (e.g., "um"), ignore stage directions like [Music], and ignore timestamps.
-- Ensure there are no partial or cut-off bullets; end with a complete bullet.
-- If content is thin, prioritize “🎯 Key Ideas” and “✅ Actionable Takeaways”.`;
+  const rules = `You are an expert YouTube video summarizer. Produce a high-signal, structured summary from the cleaned transcript.
+
+OUTPUT RULES:
+- Create your own section headers based on the content and structure of the video.
+- Examples: "Key Ideas," "Main Points," "Steps Explained," "Insights," "Plot Summary," "Important Arguments," "Key Moments," "What You'll Learn," etc.
+- (Choose the most meaningful ones for THIS video.)
+- Include ${sections}, each with 1–3 concise bullets (1–2 sentences each).
+- Total bullets across all sections: at most ${totalPoints}.
+- Paraphrase everything; avoid quoting the transcript.
+- Remove filler words, repeated lines, timestamps, and irrelevant noise.
+- End with complete, polished bullets only.
+
+SUMMARY LOGIC:
+- Capture the core message and high-value insights of the video.
+- Adapt to the video's genre:
+  • Tutorials → steps, methods, tips
+  • Reviews → pros, cons, verdict
+  • Podcasts/interviews → insights, themes, arguments
+  • Stories/vlogs → key events, emotional beats
+  • News → facts, implications
+  • Educational videos → concepts, explanations
+- Avoid generic statements; be specific to what the video actually says.
+- If content is thin, produce fewer sections with the strongest possible bullets.
+
+GOAL:
+Produce a summary that feels natural, meaningful, and tailored to the video — not forced into a fixed template.`;
 
   const style = (() => {
     switch (type) {
       case 'funny':
-        return 'Tone: light and witty where appropriate, but keep it informative.';
+        return '\nTone: light and witty where appropriate, but keep it informative.';
       case 'actionable':
-        return 'Tone: practical and implementation-focused. Emphasize concrete steps.';
+        return '\nTone: practical and implementation-focused. Emphasize concrete steps and actionable advice.';
       case 'controversial':
-        return 'Tone: balanced; present opposing viewpoints clearly.';
+        return '\nTone: balanced; present opposing viewpoints clearly and fairly.';
       default:
-        return 'Tone: clear, objective, insightful.';
+        return '\nTone: clear, objective, insightful.';
     }
   })();
 
-  return `${rules}\n${style}\nFormat exactly as:\n🎯 Key Ideas\n• ...\n• ...\n\n📌 Why It Matters\n• ...\n\n🔍 Evidence / Context\n• ...\n\n✅ Actionable Takeaways\n• ...`;
+  return `${rules}${style}`;
 }
 
 function getMaxTokensForLength(length) {
@@ -505,23 +519,18 @@ function hashString(str) {
   return crypto.createHash('md5').update(str).digest('hex');
 }
 
-// Ensure all required sections exist and there are no dangling bullets
+// Ensure summary has no dangling bullets and is properly formatted
 function ensureSummaryCompleteness(text, length) {
-  const headers = [
-    '🎯 Key Ideas',
-    '📌 Why It Matters',
-    '🔍 Evidence / Context',
-    '✅ Actionable Takeaways'
-  ];
   let s = String(text || '').trim();
-  // Add missing headers with at least one bullet
-  headers.forEach((h) => {
-    if (!s.includes(h)) {
-      s += `${s.endsWith('\n') ? '' : '\n\n'}${h}\n• N/A`;
-    }
-  });
-  // Remove a dangling bullet at the end like "\n•" or "\n•   "
+  
+  // Remove any dangling bullets at the end like "\n•" or "\n•   "
   s = s.replace(/\n•\s*$/, '');
+  
+  // Ensure there's at least some content
+  if (!s || s.length < 10) {
+    return '📄 Summary\n• Unable to generate a meaningful summary for this video.';
+  }
+  
   return s.trim();
 }
 

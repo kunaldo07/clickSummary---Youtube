@@ -1882,6 +1882,32 @@ html[dark] .start-summarize-btn:hover,
   transform: translateY(-1px);
 }
 
+.auth-features {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 24px 0;
+  padding: 20px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%);
+  border-radius: 12px;
+  border: 1px solid #e0e7ff;
+}
+
+.auth-feature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.auth-feature .feature-icon {
+  font-size: 24px;
+  display: block;
+}
+
 .auth-note {
   margin: 0;
   font-size: 14px;
@@ -1967,6 +1993,19 @@ html[dark] .retry-btn:hover,
 .dark .auth-btn-secondary:hover,
 .dark .retry-btn:hover {
   background: #4b5563;
+}
+
+html[dark] .auth-features,
+[dark] .auth-features,
+.dark .auth-features {
+  background: linear-gradient(135deg, #1e3a5f 0%, #2d1b4e 100%);
+  border-color: #4b5563;
+}
+
+html[dark] .auth-feature,
+[dark] .auth-feature,
+.dark .auth-feature {
+  color: #d1d5db;
 }
 
 html[dark] .auth-note,

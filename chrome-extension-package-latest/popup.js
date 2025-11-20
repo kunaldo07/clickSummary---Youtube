@@ -88,8 +88,21 @@ async function checkAuthenticationStatus() {
           return null;
         }
         
-        console.log('✅ Found valid auth data in extension storage');
-        updateSyncStatus('✅ Authentication found!');
+        console.log('✅ Found auth data in extension storage, validating with backend...');
+        updateSyncStatus('🔄 Validating authentication...');
+        
+        // Validate token with backend to ensure it's still valid
+        const isValid = await validateTokenWithBackend(result.youtube_summarizer_token);
+        
+        if (!isValid) {
+          console.warn('⚠️ Token is invalid or expired, clearing storage');
+          await chrome.storage.local.remove(['youtube_summarizer_token', 'youtube_summarizer_user']);
+          updateSyncStatus('❌ Session expired - please sign in again');
+          return null;
+        }
+        
+        console.log('✅ Token validated successfully');
+        updateSyncStatus('✅ Authentication verified!');
         
         return {
           token: result.youtube_summarizer_token,
@@ -111,6 +124,37 @@ async function checkAuthenticationStatus() {
     console.error('❌ Error checking authentication:', error);
     updateSyncStatus('❌ Error checking authentication');
     return null;
+  }
+}
+
+async function validateTokenWithBackend(token) {
+  try {
+    console.log('🔐 Validating token with backend...');
+    
+    const response = await fetch(`${BACKEND_URL}/auth/validate`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Token validation response:', data);
+      return data.valid === true;
+    } else if (response.status === 401 || response.status === 403) {
+      console.warn('⚠️ Token validation failed: Unauthorized');
+      return false;
+    } else {
+      console.warn('⚠️ Token validation failed with status:', response.status);
+      // On network errors or other issues, assume token is still valid to avoid false negatives
+      return true;
+    }
+  } catch (error) {
+    console.warn('⚠️ Token validation error (assuming valid):', error);
+    // On network errors, assume token is still valid to avoid disrupting user experience
+    return true;
   }
 }
 

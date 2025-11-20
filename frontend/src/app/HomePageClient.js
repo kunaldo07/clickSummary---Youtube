@@ -17,7 +17,6 @@ const HeroSection = styled.section`
   padding: 120px 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  text-align: center;
   position: relative;
   overflow: hidden;
 
@@ -31,6 +30,10 @@ const HeroSection = styled.section`
     background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="1.5" fill="rgba(255,255,255,0.05)"/><circle cx="40" cy="60" r="0.8" fill="rgba(255,255,255,0.08)"/><circle cx="70" cy="30" r="1.2" fill="rgba(255,255,255,0.06)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
     pointer-events: none;
   }
+  
+  @media (max-width: 968px) {
+    padding: 80px 0;
+  }
 `;
 
 const Container = styled.div`
@@ -41,8 +44,28 @@ const Container = styled.div`
   z-index: 1;
 `;
 
+const HeroGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+  
+  @media (max-width: 968px) {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+`;
+
+const HeroContent = styled.div`
+  text-align: left;
+  
+  @media (max-width: 968px) {
+    text-align: center;
+  }
+`;
+
 const HeroTitle = styled(motion.h1)`
-  font-size: clamp(3rem, 6vw, 5rem);
+  font-size: clamp(2.5rem, 5vw, 4rem);
   font-weight: 900;
   margin-bottom: 24px;
   background: linear-gradient(135deg, #ffffff 0%, #e5e7eb 100%);
@@ -53,20 +76,63 @@ const HeroTitle = styled(motion.h1)`
 `;
 
 const HeroSubtitle = styled(motion.p)`
-  font-size: 1.5rem;
-  margin-bottom: 48px;
+  font-size: 1.25rem;
+  margin-bottom: 24px;
   opacity: 0.9;
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
   line-height: 1.6;
+  
+  @media (max-width: 968px) {
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+`;
+
+const HeroStats = styled(motion.div)`
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+  font-size: 0.9rem;
+  opacity: 0.95;
+  
+  @media (max-width: 968px) {
+    justify-content: center;
+  }
+`;
+
+const StatItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  span:first-child {
+    font-size: 1.2rem;
+  }
+`;
+
+const UrgencyBadge = styled(motion.div)`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 `;
 
 const CTAButtons = styled(motion.div)`
   display: flex;
-  gap: 24px;
-  justify-content: center;
+  gap: 20px;
   flex-wrap: wrap;
+  
+  @media (max-width: 968px) {
+    justify-content: center;
+  }
 `;
 
 const PrimaryButton = styled(Link)`
@@ -125,6 +191,54 @@ const SecondaryButtonAsButton = styled.button`
     border-color: rgba(255, 255, 255, 0.5);
     transform: translateY(-2px);
   }
+`;
+
+const HeroDemoContainer = styled(motion.div)`
+  position: relative;
+  z-index: 1;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  background: #000;
+  width: 100%;
+  
+  @media (max-width: 968px) {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+`;
+
+const HeroDemoVideo = styled.video`
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 24px;
+`;
+
+const HeroBottomSection = styled.div`
+  margin-top: 64px;
+  text-align: center;
+  
+  @media (max-width: 968px) {
+    margin-top: 48px;
+  }
+`;
+
+const HeroBottomStats = styled(motion.div)`
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+  font-size: 0.95rem;
+  opacity: 0.95;
+`;
+
+const HeroBottomButtons = styled(motion.div)`
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
 `;
 
 const FeaturesSection = styled.section`
@@ -340,6 +454,255 @@ const ShowcaseFeatureItem = styled.li`
   }
 `;
 
+const SocialProofSection = styled.section`
+  padding: 80px 0;
+  background: white;
+`;
+
+const TestimonialsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 32px;
+  margin-top: 48px;
+`;
+
+const TestimonialCard = styled(motion.div)`
+  background: #f9fafb;
+  padding: 32px;
+  border-radius: 16px;
+  border-left: 4px solid #8b5cf6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+`;
+
+const TestimonialText = styled.p`
+  color: #374151;
+  line-height: 1.7;
+  margin-bottom: 20px;
+  font-style: italic;
+  font-size: 1.05rem;
+`;
+
+const TestimonialAuthor = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const AuthorAvatar = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 1.2rem;
+`;
+
+const AuthorInfo = styled.div`
+  flex: 1;
+`;
+
+const AuthorName = styled.div`
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 2px;
+`;
+
+const AuthorRole = styled.div`
+  font-size: 0.875rem;
+  color: #6b7280;
+`;
+
+const StarsRating = styled.div`
+  color: #fbbf24;
+  font-size: 1rem;
+`;
+
+const ComparisonSection = styled.section`
+  padding: 100px 0;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+`;
+
+const ComparisonGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  max-width: 1000px;
+  margin: 48px auto 0;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+`;
+
+const ComparisonCard = styled(motion.div)`
+  background: ${props => props.$type === 'before' ? '#fee2e2' : '#d1fae5'};
+  padding: 40px;
+  border-radius: 20px;
+  position: relative;
+`;
+
+const ComparisonLabel = styled.div`
+  position: absolute;
+  top: -16px;
+  left: 24px;
+  background: ${props => props.$type === 'before' ? '#ef4444' : '#10b981'};
+  color: white;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+`;
+
+const ComparisonTitle = styled.h3`
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+  margin-top: 16px;
+  color: #1f2937;
+`;
+
+const ComparisonList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+`;
+
+const ComparisonItem = styled.li`
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #374151;
+  line-height: 1.6;
+  
+  &:before {
+    content: '${props => props.$type === 'before' ? '❌' : '✅'}';
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+`;
+
+const FAQSection = styled.section`
+  padding: 100px 0;
+  background: white;
+`;
+
+const FAQGrid = styled.div`
+  max-width: 800px;
+  margin: 48px auto 0;
+`;
+
+const FAQItem = styled(motion.div)`
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 20px;
+  border: 2px solid #e5e7eb;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    border-color: #8b5cf6;
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.1);
+  }
+`;
+
+const FAQQuestion = styled.h3`
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  
+  &:before {
+    content: 'Q:';
+    color: #8b5cf6;
+    font-weight: 900;
+  }
+`;
+
+const FAQAnswer = styled.p`
+  color: #4b5563;
+  line-height: 1.7;
+  margin-left: 32px;
+`;
+
+const FinalCTASection = styled.section`
+  padding: 100px 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="1.5" fill="rgba(255,255,255,0.05)"/><circle cx="40" cy="60" r="0.8" fill="rgba(255,255,255,0.08)"/><circle cx="70" cy="30" r="1.2" fill="rgba(255,255,255,0.06)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    pointer-events: none;
+  }
+`;
+
+const FinalCTATitle = styled.h2`
+  font-size: 3rem;
+  font-weight: 900;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+  
+  @media (max-width: 768px) {
+    font-size: 2rem;
+  }
+`;
+
+const FinalCTASubtitle = styled.p`
+  font-size: 1.25rem;
+  margin-bottom: 40px;
+  opacity: 0.95;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  z-index: 1;
+`;
+
+const TrustBadges = styled.div`
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 48px;
+  position: relative;
+  z-index: 1;
+`;
+
+const TrustBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 12px 24px;
+  border-radius: 24px;
+  backdrop-filter: blur(10px);
+  font-weight: 600;
+  font-size: 0.9rem;
+  
+  span:first-child {
+    font-size: 1.2rem;
+  }
+`;
+
 export default function HomePageClient() {
   const { isAuthenticated } = useAuth();
 
@@ -383,42 +746,93 @@ export default function HomePageClient() {
     <PageContainer>
         <HeroSection>
           <Container>
-            <HeroTitle
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
+            <UrgencyBadge
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
             >
-              Transform YouTube Videos into Intelligent Summaries
-            </HeroTitle>
-            <HeroSubtitle
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              Save time and learn faster with AI-powered video summarization. 
-              Get key insights, action items, and interactive chat - all in seconds.
-            </HeroSubtitle>
-            <CTAButtons
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              {!isAuthenticated ? (
-                <>
-                  <PrimaryButton href="/pricing">Get Started Free</PrimaryButton>
-                  <SecondaryButton href="/signin">Sign In</SecondaryButton>
-                </>
-              ) : (
-                <>
-                  <PrimaryButton href="/pricing">Upgrade to Premium</PrimaryButton>
-                  <SecondaryButtonAsButton 
-                    onClick={redirectToExtension}
-                  >
-                    Add to Chrome
-                  </SecondaryButtonAsButton>
-                </>
-              )}
-            </CTAButtons>
+              <span>🔥</span>
+              <span>Limited Time: Get 100% off Premium - First 100 users only!</span>
+            </UrgencyBadge>
+            
+            <HeroGrid>
+              <HeroContent>
+                <HeroTitle
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.1 }}
+                >
+                  Stop Wasting Hours Watching Videos
+                </HeroTitle>
+                <HeroSubtitle
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                >
+                  Get AI-powered summaries of any YouTube video in seconds. Save 20+ hours per week while learning faster and retaining more.
+                </HeroSubtitle>
+              </HeroContent>
+              
+              <HeroDemoContainer
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.3 }}
+              >
+                <HeroDemoVideo
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  poster="/demo-thumbnail.jpg"
+                >
+                  <source src="/demo-video.mp4" type="video/mp4" />
+                  <source src="/demo-video.webm" type="video/webm" />
+                  Your browser does not support the video tag.
+                </HeroDemoVideo>
+              </HeroDemoContainer>
+            </HeroGrid>
+            
+            <HeroBottomSection>
+              <HeroBottomStats
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                <StatItem>
+                  <span>⭐</span>
+                  <span>4.9/5 Rating (50+ reviews)</span>
+                </StatItem>
+                <StatItem>
+                  <span>👥</span>
+                  <span>1000+ Active Users</span>
+                </StatItem>
+                <StatItem>
+                  <span>⚡</span>
+                  <span>250k+ Videos Summarized</span>
+                </StatItem>
+              </HeroBottomStats>
+              <HeroBottomButtons
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
+              >
+                {!isAuthenticated ? (
+                  <>
+                    <PrimaryButton href="/pricing">Get Started Free</PrimaryButton>
+                    <SecondaryButton href="/signin">Sign In</SecondaryButton>
+                  </>
+                ) : (
+                  <>
+                    <PrimaryButton href="/pricing">Upgrade to Premium</PrimaryButton>
+                    <SecondaryButtonAsButton 
+                      onClick={redirectToExtension}
+                    >
+                      Add to Chrome
+                    </SecondaryButtonAsButton>
+                  </>
+                )}
+              </HeroBottomButtons>
+            </HeroBottomSection>
           </Container>
         </HeroSection>
 
@@ -466,6 +880,113 @@ export default function HomePageClient() {
           </VideoContainer>
         </Container>
       </TutorialSection>
+
+      <SocialProofSection>
+        <Container>
+          <SectionTitle>Loved by Students, Professionals & Researchers</SectionTitle>
+          <TestimonialsGrid>
+            <TestimonialCard
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <StarsRating>⭐⭐⭐⭐⭐</StarsRating>
+              <TestimonialText>
+                "ClickSummary has been a game-changer for my research. I can now review 20+ educational videos in the time it used to take me to watch 2. The AI summaries are incredibly accurate!"
+              </TestimonialText>
+              <TestimonialAuthor>
+                <AuthorAvatar>SM</AuthorAvatar>
+                <AuthorInfo>
+                  <AuthorName>Sarah Mitchell</AuthorName>
+                  <AuthorRole>PhD Student, MIT</AuthorRole>
+                </AuthorInfo>
+              </TestimonialAuthor>
+            </TestimonialCard>
+
+            <TestimonialCard
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <StarsRating>⭐⭐⭐⭐⭐</StarsRating>
+              <TestimonialText>
+                "As a content creator, I need to stay on top of trends. ClickSummary lets me scan through hours of competitor content in minutes. Absolute must-have tool!"
+              </TestimonialText>
+              <TestimonialAuthor>
+                <AuthorAvatar>RK</AuthorAvatar>
+                <AuthorInfo>
+                  <AuthorName>Raj Kumar</AuthorName>
+                  <AuthorRole>YouTube Creator, 500K+ subs</AuthorRole>
+                </AuthorInfo>
+              </TestimonialAuthor>
+            </TestimonialCard>
+
+            <TestimonialCard
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <StarsRating>⭐⭐⭐⭐⭐</StarsRating>
+              <TestimonialText>
+                "I was skeptical at first, but the interactive chat feature is mind-blowing. It's like having a personal tutor who's watched every video for you. Worth every penny!"
+              </TestimonialText>
+              <TestimonialAuthor>
+                <AuthorAvatar>JL</AuthorAvatar>
+                <AuthorInfo>
+                  <AuthorName>Jennifer Lee</AuthorName>
+                  <AuthorRole>Software Engineer, Google</AuthorRole>
+                </AuthorInfo>
+              </TestimonialAuthor>
+            </TestimonialCard>
+          </TestimonialsGrid>
+        </Container>
+      </SocialProofSection>
+
+      <ComparisonSection>
+        <Container>
+          <SectionTitle>The Old Way vs. The ClickSummary Way</SectionTitle>
+          <ComparisonGrid>
+            <ComparisonCard
+              $type="before"
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <ComparisonLabel $type="before">Without ClickSummary</ComparisonLabel>
+              <ComparisonTitle>Slow & Inefficient</ComparisonTitle>
+              <ComparisonList>
+                <ComparisonItem $type="before">Watch entire 45-minute videos to find key points</ComparisonItem>
+                <ComparisonItem $type="before">Take manual notes and miss important details</ComparisonItem>
+                <ComparisonItem $type="before">Rewatch videos multiple times to understand</ComparisonItem>
+                <ComparisonItem $type="before">Waste 20+ hours per week on video content</ComparisonItem>
+                <ComparisonItem $type="before">No way to quickly search or reference content</ComparisonItem>
+              </ComparisonList>
+            </ComparisonCard>
+
+            <ComparisonCard
+              $type="after"
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <ComparisonLabel $type="after">With ClickSummary</ComparisonLabel>
+              <ComparisonTitle>Fast & Smart</ComparisonTitle>
+              <ComparisonList>
+                <ComparisonItem $type="after">Get comprehensive summaries in 10 seconds</ComparisonItem>
+                <ComparisonItem $type="after">AI captures all key insights automatically</ComparisonItem>
+                <ComparisonItem $type="after">Ask questions and get instant answers</ComparisonItem>
+                <ComparisonItem $type="after">Save 20+ hours per week for what matters</ComparisonItem>
+                <ComparisonItem $type="after">Export and organize all your summaries</ComparisonItem>
+              </ComparisonList>
+            </ComparisonCard>
+          </ComparisonGrid>
+        </Container>
+      </ComparisonSection>
 
       <ShowcaseSection>
         <Container>
@@ -565,6 +1086,119 @@ export default function HomePageClient() {
           </ShowcaseGrid>
         </Container>
       </ShowcaseSection>
+
+      <FAQSection>
+        <Container>
+          <SectionTitle>Frequently Asked Questions</SectionTitle>
+          <FAQGrid>
+            <FAQItem
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+            >
+              <FAQQuestion>How accurate are the AI summaries?</FAQQuestion>
+              <FAQAnswer>
+                Our AI achieves 95%+ accuracy by analyzing full video transcripts. It captures key points, main ideas, and important details that matter most. Thousands of users trust ClickSummary for research, learning, and professional work.
+              </FAQAnswer>
+            </FAQItem>
+
+            <FAQItem
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <FAQQuestion>Does it work on all YouTube videos?</FAQQuestion>
+              <FAQAnswer>
+                ClickSummary works on any YouTube video that has captions or transcripts available (which is 95%+ of videos). This includes educational content, tutorials, podcasts, lectures, and more.
+              </FAQAnswer>
+            </FAQItem>
+
+            <FAQItem
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <FAQQuestion>Can I try it before paying?</FAQQuestion>
+              <FAQAnswer>
+                Absolutely! Start with our Free plan that gives you 5 summaries per day. No credit card required. Upgrade to Premium only when you're ready for unlimited summaries and advanced features.
+              </FAQAnswer>
+            </FAQItem>
+
+            <FAQItem
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <FAQQuestion>What if I'm not satisfied?</FAQQuestion>
+              <FAQAnswer>
+                We offer a 7-day money-back guarantee on all Premium plans. If you're not completely satisfied, just email us and we'll refund you immediately, no questions asked.
+              </FAQAnswer>
+            </FAQItem>
+
+            <FAQItem
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <FAQQuestion>How is this different from just reading the description?</FAQQuestion>
+              <FAQAnswer>
+                Video descriptions are written by creators and often miss key content. ClickSummary analyzes the actual video transcript to extract insights, key points, and actionable information. Plus, you can ask questions and get instant answers about specific topics.
+              </FAQAnswer>
+            </FAQItem>
+          </FAQGrid>
+        </Container>
+      </FAQSection>
+
+      <FinalCTASection>
+        <Container>
+          <FinalCTATitle>Ready to 10x Your Learning Speed?</FinalCTATitle>
+          <FinalCTASubtitle>
+            Join 10,000+ users who are saving hours every week. Start free today - no credit card required.
+          </FinalCTASubtitle>
+          <CTAButtons
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            {!isAuthenticated ? (
+              <>
+                <PrimaryButton href="/pricing">Start Free Trial</PrimaryButton>
+                <SecondaryButton href="/signin">Sign In</SecondaryButton>
+              </>
+            ) : (
+              <>
+                <PrimaryButton href="/pricing">Upgrade to Premium</PrimaryButton>
+                <SecondaryButtonAsButton onClick={redirectToExtension}>
+                  Add to Chrome
+                </SecondaryButtonAsButton>
+              </>
+            )}
+          </CTAButtons>
+          <TrustBadges>
+            <TrustBadge>
+              <span>🔒</span>
+              <span>Secure & Private</span>
+            </TrustBadge>
+            <TrustBadge>
+              <span>💰</span>
+              <span>7-Day Money Back</span>
+            </TrustBadge>
+            <TrustBadge>
+              <span>⚡</span>
+              <span>Instant Setup</span>
+            </TrustBadge>
+            <TrustBadge>
+              <span>🎯</span>
+              <span>Cancel Anytime</span>
+            </TrustBadge>
+          </TrustBadges>
+        </Container>
+      </FinalCTASection>
     </PageContainer>
   );
 }

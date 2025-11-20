@@ -26,12 +26,14 @@ const detectEnvironment = async () => {
   try {
     console.log('🔍 Testing localhost API (http://localhost:3001)...');
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
     
     const response = await fetch('http://localhost:3001/api/health', {
       method: 'GET',
       signal: controller.signal,
-      headers: { 'Accept': 'application/json' }
+      headers: { 'Accept': 'application/json' },
+      mode: 'cors',
+      cache: 'no-cache'
     });
     
     clearTimeout(timeoutId);
@@ -41,16 +43,28 @@ const detectEnvironment = async () => {
       environmentCache = { isDevelopment: true, isProduction: false };
       return environmentCache;
     } else {
-      console.log('❌ Localhost backend responded with error:', response.status);
+      console.log('⚠️ Localhost backend responded with error:', response.status);
+      console.log('⚠️ Assuming DEVELOPMENT mode anyway (backend might be starting)');
+      environmentCache = { isDevelopment: true, isProduction: false };
+      return environmentCache;
     }
   } catch (error) {
-    console.log('❌ Localhost backend not accessible:', error.message);
+    console.log('⚠️ Localhost backend test failed:', error.message);
+    console.log('⚠️ Error type:', error.name);
+    
+    // Check if it's a network error vs timeout
+    if (error.name === 'AbortError') {
+      console.log('⏰ Localhost check timed out - assuming DEVELOPMENT mode');
+      environmentCache = { isDevelopment: true, isProduction: false };
+      return environmentCache;
+    }
+    
+    // For TypeError (network errors), still try development mode first
+    console.log('🔧 Network error detected - defaulting to DEVELOPMENT mode');
+    console.log('💡 If you want PRODUCTION mode, set it manually via setConfig');
+    environmentCache = { isDevelopment: true, isProduction: false };
+    return environmentCache;
   }
-  
-  // If localhost fails, assume production environment
-  console.log('🌐 Localhost not available - PRODUCTION MODE');
-  environmentCache = { isDevelopment: false, isProduction: true };
-  return environmentCache;
 };
 
 const getAPIBaseURL = async () => {
@@ -272,6 +286,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           sendResponse({ success: false, error: chrome.runtime.lastError.message });
         } else {
           console.log('✅ User data cleared successfully');
+          
+          // Notify popup and content scripts about auth status change
+          chrome.runtime.sendMessage({ action: 'authStatusChanged' }).catch(() => {
+            // Popup might not be open, which is fine
+            console.log('📭 Popup not open, auth change notification skipped');
+          });
+          
+          // Notify all tabs with content script
+          chrome.tabs.query({}, (tabs) => {
+            tabs.forEach(tab => {
+              chrome.tabs.sendMessage(tab.id, { action: 'authStatusChanged' }).catch(() => {
+                // Tab might not have content script, which is fine
+              });
+            });
+          });
+          
           sendResponse({ success: true });
         }
       });
@@ -703,12 +733,28 @@ async function callSecureBackend(endpoint, data, userToken) {
       return result;
 
     } catch (error) {
-      console.error(`❌ Backend call failed (attempt ${attempt + 1}):`, error);
+      console.error(`❌ Backend call failed (attempt ${attempt + 1}/${CONFIG.RETRY_ATTEMPTS}):`, error);
+      console.error(`❌ Error details:`, {
+        name: error.name,
+        message: error.message,
+        url: url,
+        endpoint: endpoint
+      });
+      
       if (error.name === 'AbortError') {
         throw new Error(`Backend request timed out after 30 seconds. Please check if backend is running on ${CONFIG.API_BASE_URL}`);
       }
+      
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        console.error(`❌ Network error: Cannot reach ${url}`);
+        console.error(`💡 Possible causes:`);
+        console.error(`   1. Backend server not running on ${CONFIG.API_BASE_URL}`);
+        console.error(`   2. CORS issue (check backend CORS settings)`);
+        console.error(`   3. Wrong URL configured (check extension config)`);
+      }
+      
       if (attempt === CONFIG.RETRY_ATTEMPTS - 1) {
-        throw new Error('Unable to connect to backend server. Please check if the server is running.');
+        throw new Error(`Unable to connect to backend server at ${CONFIG.API_BASE_URL}. Please check if the server is running.`);
       }
       await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY * (attempt + 1)));
     }
