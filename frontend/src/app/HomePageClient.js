@@ -899,7 +899,7 @@ export default function HomePageClient() {
                 <AuthorAvatar>SM</AuthorAvatar>
                 <AuthorInfo>
                   <AuthorName>Sarah Mitchell</AuthorName>
-                  <AuthorRole>PhD Student, MIT</AuthorRole>
+                  <AuthorRole>PhD Student</AuthorRole>
                 </AuthorInfo>
               </TestimonialAuthor>
             </TestimonialCard>
@@ -918,7 +918,7 @@ export default function HomePageClient() {
                 <AuthorAvatar>RK</AuthorAvatar>
                 <AuthorInfo>
                   <AuthorName>Raj Kumar</AuthorName>
-                  <AuthorRole>YouTube Creator, 500K+ subs</AuthorRole>
+                  <AuthorRole>YouTube Creator</AuthorRole>
                 </AuthorInfo>
               </TestimonialAuthor>
             </TestimonialCard>
@@ -937,7 +937,7 @@ export default function HomePageClient() {
                 <AuthorAvatar>JL</AuthorAvatar>
                 <AuthorInfo>
                   <AuthorName>Jennifer Lee</AuthorName>
-                  <AuthorRole>Software Engineer, Google</AuthorRole>
+                  <AuthorRole>Software Engineer</AuthorRole>
                 </AuthorInfo>
               </TestimonialAuthor>
             </TestimonialCard>
