@@ -5,7 +5,7 @@ class YouTubeSummarizer {
     this.currentVideoId = null;
     this.summaryContainer = null;
     this.isProcessing = false;
-    this.currentSummaryType = 'insightful'; // insightful, funny, actionable, controversial
+    this.currentSummaryType = 'insightful'; // insightful, conversational, funny, actionable
     this.currentFormat = 'list'; // list, q&a
     this.currentLength = 'short'; // short, detailed
     this.transcriptData = null;
@@ -989,11 +989,11 @@ class YouTubeSummarizer {
         "What tools or methods are suggested?",
         "How can viewers implement these ideas?"
       ],
-      controversial: [
-        "What controversial points are raised?",
-        "What debates or disagreements are discussed?",
-        "What opposing viewpoints are presented?",
-        "What might generate discussion or controversy?"
+      conversational: [
+        "What's this video about in simple terms?",
+        "Can you explain the main points casually?",
+        "What would you tell a friend about this?",
+        "What's the overall vibe of this video?"
       ]
     };
     
@@ -1003,9 +1003,9 @@ class YouTubeSummarizer {
   getHeadlineForType(type) {
     const headlines = {
       insightful: 'Key Insights & Learnings',
+      conversational: 'Casual Breakdown',
       funny: 'Humorous Highlights',
-      actionable: 'Action Items & Takeaways',
-      controversial: 'Debate Points & Controversies'
+      actionable: 'Action Items & Takeaways'
     };
     
     return headlines[type] || 'Summary Points';
@@ -1194,9 +1194,9 @@ class YouTubeSummarizer {
           <div class="dropdown-controls" id="dropdown-controls" style="display: none;">
             <select id="summary-type-select" class="summary-dropdown">
               <option value="insightful">Insightful</option>
+              <option value="conversational">Conversational</option>
               <option value="funny">Funny</option>
               <option value="actionable">Actionable</option>
-              <option value="controversial">Controversial</option>
             </select>
             
             <select id="format-select" class="summary-dropdown">
@@ -1554,9 +1554,9 @@ class YouTubeSummarizer {
   getCategoryTitle() {
     switch(this.currentMode) {
       case 'insightful': return 'Key Insights';
+      case 'conversational': return 'Casual Chat';
       case 'funny': return 'Humorous Highlights';
       case 'actionable': return 'Action Items';
-      case 'controversial': return 'Debate Points';
       default: return 'Summary';
     }
   }
@@ -2163,15 +2163,21 @@ ${content}
 
     summaryContent.innerHTML = `
       <div class="chat-interface">
-        <h3 class="chat-title">💬 Ask about this video</h3>
+        <div class="chat-header">
+          <h3 class="chat-title">💬 Chat with AI</h3>
+        </div>
+        
         <div class="chat-messages" id="chat-messages">
           <!-- Messages will be populated by restoreChatHistory -->
         </div>
+        
         <div class="chat-input-container">
-          <input type="text" id="chat-input" placeholder="Ask a question about the video..." 
-                 class="chat-input" maxlength="200">
-          <button id="send-chat" class="chat-send-btn" title="Send">
-            <span class="send-icon">➤</span>
+          <input type="text" id="chat-input" placeholder="Ask a question... (Press Enter to send)" 
+                 class="chat-input" maxlength="300">
+          <button id="send-chat" class="chat-send-btn" title="Send (Enter)">
+            <svg class="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -2232,7 +2238,7 @@ ${content}
 
     // Send on Enter key
     chatInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter') {
         e.preventDefault();
         sendMessage();
       }
@@ -2279,6 +2285,7 @@ ${content}
     messageElement.className = `chat-message ${type}-message`;
     
     const avatar = type === 'user' ? '👤' : '🤖';
+    
     messageElement.innerHTML = `
       <div class="message-avatar">${avatar}</div>
       <div class="message-content">${message}</div>

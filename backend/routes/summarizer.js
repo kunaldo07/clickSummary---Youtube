@@ -1,6 +1,8 @@
 const express = require('express');
 const OpenAI = require('openai');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { auth } = require('../middleware/auth');
 const { requireActiveSubscription } = require('../middleware/subscription');
 const { checkCostLimit, trackCost } = require('../middleware/costTracking');
@@ -58,9 +60,9 @@ router.post('/summarize', auth, requireActiveSubscription, checkCostLimit, async
     }
 
     // Validate enum values
-    const validTypes = ['insightful', 'funny', 'actionable', 'controversial'];
+    const validTypes = ['insightful', 'conversational', 'funny', 'actionable'];
     const validLengths = ['short', 'detailed'];
-    const validFormats = ['list', 'paragraph', 'timestamped'];
+    const validFormats = ['list', 'qa'];
 
     if (!validTypes.includes(type)) {
       return res.status(400).json({ error: 'Invalid type. Must be: ' + validTypes.join(', ') });
@@ -464,51 +466,63 @@ function calculateCost(inputTokens, outputTokens) {
   return inputCost + outputCost;
 }
 
-function getOptimizedPromptForGPT4oMini(type, length, format) {
-  const totalPoints = length === 'detailed' ? 12 : 6;
-  const sections = length === 'detailed' ? '3–4 sections' : '2–3 sections';
+// ============================================================================
+// LOAD PROMPTS FROM JSON FILE
+// ============================================================================
 
-  const rules = `You are an expert YouTube video summarizer. Produce a high-signal, structured summary from the cleaned transcript.
+let PROMPTS_DATA = {};
+let PROMPTS_BY_KEY = {};
 
-OUTPUT RULES:
-- Create your own section headers based on the content and structure of the video.
-- Examples: "Key Ideas," "Main Points," "Steps Explained," "Insights," "Plot Summary," "Important Arguments," "Key Moments," "What You'll Learn," etc.
-- (Choose the most meaningful ones for THIS video.)
-- Include ${sections}, each with 1–3 concise bullets (1–2 sentences each).
-- Total bullets across all sections: at most ${totalPoints}.
-- Paraphrase everything; avoid quoting the transcript.
-- Remove filler words, repeated lines, timestamps, and irrelevant noise.
-- End with complete, polished bullets only.
-
-SUMMARY LOGIC:
-- Capture the core message and high-value insights of the video.
-- Adapt to the video's genre:
-  • Tutorials → steps, methods, tips
-  • Reviews → pros, cons, verdict
-  • Podcasts/interviews → insights, themes, arguments
-  • Stories/vlogs → key events, emotional beats
-  • News → facts, implications
-  • Educational videos → concepts, explanations
-- Avoid generic statements; be specific to what the video actually says.
-- If content is thin, produce fewer sections with the strongest possible bullets.
-
-GOAL:
-Produce a summary that feels natural, meaningful, and tailored to the video — not forced into a fixed template.`;
-
-  const style = (() => {
-    switch (type) {
-      case 'funny':
-        return '\nTone: light and witty where appropriate, but keep it informative.';
-      case 'actionable':
-        return '\nTone: practical and implementation-focused. Emphasize concrete steps and actionable advice.';
-      case 'controversial':
-        return '\nTone: balanced; present opposing viewpoints clearly and fairly.';
-      default:
-        return '\nTone: clear, objective, insightful.';
+try {
+  const promptsPath = path.join(__dirname, '../prompts/summaryPrompts.json');
+  const promptsFile = fs.readFileSync(promptsPath, 'utf8');
+  PROMPTS_DATA = JSON.parse(promptsFile);
+  
+  // Build a lookup map: key -> prompt
+  // e.g., "insightful_list_short" -> prompt text
+  Object.values(PROMPTS_DATA).forEach(promptObj => {
+    if (promptObj.key && promptObj.prompt) {
+      PROMPTS_BY_KEY[promptObj.key] = promptObj.prompt;
     }
-  })();
+  });
+  
+  console.log(`✅ Loaded ${Object.keys(PROMPTS_BY_KEY).length} prompts from summaryPrompts.json`);
+} catch (error) {
+  console.error('❌ Failed to load prompts from JSON file:', error.message);
+  console.error('Using fallback default prompt');
+  
+  // Fallback prompt if file loading fails
+  PROMPTS_BY_KEY['insightful_list_short'] = `You are an expert YouTube video analyst. Create a concise, insightful summary in list format.
 
-  return `${rules}${style}`;
+OUTPUT FORMAT:
+- 2-3 section headers based on video content
+- 2-3 bullet points per section (1-2 sentences each)
+- Total: 6 bullets maximum
+
+STYLE:
+- Analytical and thought-provoking
+- Clear, objective, professional tone
+
+RULES:
+- Paraphrase; never quote directly
+- Remove filler, timestamps, noise
+- End with complete bullets only`;
+}
+
+function selectSummaryPrompt(summaryType, format, length) {
+  const key = `${summaryType}_${format}_${length}`;
+  const prompt = PROMPTS_BY_KEY[key];
+  
+  if (!prompt) {
+    console.warn(`⚠️ No prompt found for key: ${key}, using default`);
+    return PROMPTS_BY_KEY['insightful_list_short'] || 'Summarize this video transcript concisely.';
+  }
+  
+  return prompt;
+}
+
+function getOptimizedPromptForGPT4oMini(type, length, format) {
+  return selectSummaryPrompt(type, format, length);
 }
 
 function getMaxTokensForLength(length) {
