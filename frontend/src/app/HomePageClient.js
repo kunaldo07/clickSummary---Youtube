@@ -746,15 +746,6 @@ export default function HomePageClient() {
     <PageContainer>
         <HeroSection>
           <Container>
-            <UrgencyBadge
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <span>🔥</span>
-              <span>Limited Time: Get 100% off Premium - First 100 users only!</span>
-            </UrgencyBadge>
-            
             <HeroGrid>
               <HeroContent>
                 <HeroTitle
@@ -800,15 +791,15 @@ export default function HomePageClient() {
               >
                 <StatItem>
                   <span>⭐</span>
-                  <span>4.9/5 Rating (50+ reviews)</span>
+                  <span>4.9/5 Rating (10+ reviews)</span>
                 </StatItem>
                 <StatItem>
                   <span>👥</span>
-                  <span>1000+ Active Users</span>
+                  <span>100+ Active Users</span>
                 </StatItem>
                 <StatItem>
                   <span>⚡</span>
-                  <span>250k+ Videos Summarized</span>
+                  <span>10k+ Videos Summarized</span>
                 </StatItem>
               </HeroBottomStats>
               <HeroBottomButtons
