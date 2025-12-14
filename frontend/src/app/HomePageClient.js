@@ -1149,7 +1149,7 @@ export default function HomePageClient() {
         <Container>
           <FinalCTATitle>Ready to 10x Your Learning Speed?</FinalCTATitle>
           <FinalCTASubtitle>
-            Join 10,000+ users who are saving hours every week. Start free today - no credit card required.
+            Join 100+ users who are saving hours every week. Start free today - no credit card required.
           </FinalCTASubtitle>
           <CTAButtons
             initial={{ opacity: 0, y: 30 }}
