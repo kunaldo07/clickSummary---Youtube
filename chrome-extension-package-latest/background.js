@@ -44,25 +44,23 @@ const detectEnvironment = async () => {
       return environmentCache;
     } else {
       console.log('⚠️ Localhost backend responded with error:', response.status);
-      console.log('⚠️ Assuming DEVELOPMENT mode anyway (backend might be starting)');
-      environmentCache = { isDevelopment: true, isProduction: false };
+      console.log('⚠️ Localhost not healthy - using PRODUCTION MODE');
+      environmentCache = { isDevelopment: false, isProduction: true };
       return environmentCache;
     }
   } catch (error) {
     console.log('⚠️ Localhost backend test failed:', error.message);
     console.log('⚠️ Error type:', error.name);
     
-    // Check if it's a network error vs timeout
+    // In production, users will not have a localhost backend. Default to production
+    // unless localhost explicitly succeeds.
     if (error.name === 'AbortError') {
-      console.log('⏰ Localhost check timed out - assuming DEVELOPMENT mode');
-      environmentCache = { isDevelopment: true, isProduction: false };
-      return environmentCache;
+      console.log('⏰ Localhost check timed out - using PRODUCTION MODE');
+    } else {
+      console.log('🔧 Localhost not reachable - using PRODUCTION MODE');
     }
-    
-    // For TypeError (network errors), still try development mode first
-    console.log('🔧 Network error detected - defaulting to DEVELOPMENT mode');
-    console.log('💡 If you want PRODUCTION mode, set it manually via setConfig');
-    environmentCache = { isDevelopment: true, isProduction: false };
+    console.log('💡 If you want DEVELOPMENT mode, set it manually via setConfig');
+    environmentCache = { isDevelopment: false, isProduction: true };
     return environmentCache;
   }
 };
@@ -79,11 +77,11 @@ const getWebsiteBaseURL = async () => {
 
 // Initialize CONFIG with async environment detection
 let CONFIG = {
-  API_BASE_URL: 'http://localhost:3001/api', // Default fallback
-  WEBSITE_BASE_URL: 'http://localhost:3002', // Default fallback
+  API_BASE_URL: null,
+  WEBSITE_BASE_URL: null,
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
-  environment: { isDevelopment: true, isProduction: false }
+  environment: { isDevelopment: false, isProduction: true }
 };
 
 // Initialize environment detection
@@ -113,8 +111,8 @@ let CONFIG = {
     }
     
     CONFIG = {
-      API_BASE_URL: CONFIG.API_BASE_URL || apiBaseURL,
-      WEBSITE_BASE_URL: CONFIG.WEBSITE_BASE_URL || websiteBaseURL,
+      API_BASE_URL: (CONFIG.API_BASE_URL ?? apiBaseURL),
+      WEBSITE_BASE_URL: (CONFIG.WEBSITE_BASE_URL ?? websiteBaseURL),
       RETRY_ATTEMPTS: 3,
       RETRY_DELAY: 1000,
       environment
@@ -127,7 +125,14 @@ let CONFIG = {
     
   } catch (error) {
     console.error('❌ Environment detection failed:', error);
-    console.log('🔄 Using localhost fallback');
+    console.log('🔄 Using production fallback');
+    CONFIG = {
+      API_BASE_URL: 'https://api.clicksummary.com/api',
+      WEBSITE_BASE_URL: 'https://www.clicksummary.com',
+      RETRY_ATTEMPTS: 3,
+      RETRY_DELAY: 1000,
+      environment: { isDevelopment: false, isProduction: true }
+    };
   }
 })();
 
