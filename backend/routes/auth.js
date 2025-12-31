@@ -60,12 +60,13 @@ router.post('/google', async (req, res) => {
     let user = await User.findByGoogleId(googleId);
 
     if (user) {
-      // Record sign-in event with analytics
+      // Update login timestamp
       user.recordSignIn(req);
       await user.save();
-      console.log('✅ Existing user logged in:', email, `(${user.analytics.totalSignIns} total sign-ins)`);
+      console.log('✅ Existing user logged in:', email);
     } else {
       // Create new user
+      const now = new Date();
       user = await User.create({
         googleId,
         email,
@@ -73,12 +74,14 @@ router.post('/google', async (req, res) => {
         picture,
         subscription: {
           plan: 'free',
-          status: 'active',
-          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days trial
+          status: 'active'
+        },
+        usage: {
+          chatRenewalDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days from account creation
         }
       });
       
-      // Record first sign-in event
+      // Update login timestamp
       user.recordSignIn(req);
       await user.save();
       console.log('✅ New user registered:', email);
@@ -164,6 +167,7 @@ router.post('/google-callback', async (req, res) => {
         let user = await User.findByGoogleId(googleId);
         
         if (!user) {
+          const now = new Date();
           user = await User.create({
             googleId,
             email,
@@ -171,8 +175,10 @@ router.post('/google-callback', async (req, res) => {
             picture,
             subscription: {
               plan: 'free',
-              status: 'active',
-              trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+              status: 'active'
+            },
+            usage: {
+              chatRenewalDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
             }
           });
           console.log('✅ Development test user created:', email);
@@ -266,12 +272,13 @@ router.post('/google-callback', async (req, res) => {
     let user = await User.findByGoogleId(googleId);
     
     if (user) {
-      // Record sign-in event with analytics
+      // Update login timestamp
       user.recordSignIn(req);
       await user.save();
-      console.log('✅ Existing user logged in:', email, `(${user.analytics.totalSignIns} total sign-ins)`);
+      console.log('✅ Existing user logged in:', email);
     } else {
       // Create new user
+      const now = new Date();
       user = await User.create({
         googleId,
         email,
@@ -279,12 +286,14 @@ router.post('/google-callback', async (req, res) => {
         picture,
         subscription: {
           plan: 'free',
-          status: 'active',
-          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days trial
+          status: 'active'
+        },
+        usage: {
+          chatRenewalDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days from account creation
         }
       });
       
-      // Record first sign-in event
+      // Update login timestamp
       user.recordSignIn(req);
       await user.save();
       console.log('✅ New user registered via OAuth callback:', email);

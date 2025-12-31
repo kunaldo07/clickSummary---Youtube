@@ -174,16 +174,15 @@ router.post('/chat', auth, requireActiveSubscription, checkCostLimit, async (req
     // Check if user can use chat feature
     const chatCheck = user.canUseChat();
     if (!chatCheck.allowed) {
-      const limits = user.getDailyLimits();
       return res.status(429).json({ 
-        error: 'Daily chat limit reached',
-        code: 'DAILY_CHAT_LIMIT_EXCEEDED',
+        error: 'Monthly chat limit reached',
+        code: 'MONTHLY_CHAT_LIMIT_EXCEEDED',
         details: {
-          limit: limits.chatQueries,
+          limit: chatCheck.limit,
           used: chatCheck.used,
           remaining: chatCheck.remaining,
           planType: user.subscription.planType,
-          resetTime: new Date(Date.now() + (24 * 60 * 60 * 1000)) // Tomorrow
+          renewalDate: chatCheck.renewalDate // 30 days from account creation
         }
       });
     }
@@ -567,6 +566,15 @@ router.get('/usage', auth, async (req, res) => {
     const summaryCheck = user.canCreateSummary();
     const chatCheck = user.canUseChat();
 
+    console.log('📊 Usage endpoint debug:', {
+      planType: user.subscription.planType,
+      isActive: user.subscription.isActive,
+      hasActiveSubscription: user.hasActiveSubscription,
+      limits: limits,
+      summaryCheck: summaryCheck,
+      chatCheck: chatCheck
+    });
+
     res.json({
       planType: user.subscription.planType,
       isPaid: user.canUsePremiumFeatures(),
@@ -583,7 +591,8 @@ router.get('/usage', auth, async (req, res) => {
         chat: {
           today: user.usage.chatQueriesToday,
           remaining: chatCheck.remaining,
-          canUse: chatCheck.allowed
+          canUse: chatCheck.allowed,
+          renewalDate: chatCheck.renewalDate // 30-day renewal date for free users
         }
       },
       resetTime: new Date(Date.now() + (24 * 60 * 60 * 1000)) // Tomorrow

@@ -587,7 +587,7 @@ class YouTubeSummarizer {
       // Add timeout for message response
       const timeout = setTimeout(() => {
         console.log('⏰ CONTENT SCRIPT: Message timed out after 35 seconds');
-        reject(new Error('Backend request timed out after 30 seconds. Please check if backend is running on http://localhost:3001'));
+        reject(new Error('Backend request timed out. Please check your connection and try again.'));
       }, 35000);
       
       chrome.runtime.sendMessage({
@@ -1453,16 +1453,33 @@ class YouTubeSummarizer {
       const summary = this.summaries[this.currentSummaryType][this.currentLength];
       
       if (summary.startsWith('Failed to generate')) {
-        summaryContent.innerHTML = `
-          <div class="summarizer-error">
-            <span>⚠️ ${summary}</span>
-            <div class="error-actions">
-              <button class="refresh-page-btn" onclick="location.reload();">
-                🔄 Refresh Page
-              </button>
+        const isLimitError = summary.includes('Free Plan Limit Reached');
+        
+        if (isLimitError) {
+          summaryContent.innerHTML = `
+            <div class="summarizer-error limit-error">
+              <div class="limit-error-content">
+                ${summary.split('\n').map(line => `<div>${line}</div>`).join('')}
+              </div>
+              <div class="error-actions">
+                <button class="upgrade-btn" onclick="window.open('https://www.clicksummary.com/pricing', '_blank');">
+                  ✨ Upgrade to Pro Plan
+                </button>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        } else {
+          summaryContent.innerHTML = `
+            <div class="summarizer-error">
+              <span>⚠️ ${summary}</span>
+              <div class="error-actions">
+                <button class="refresh-page-btn" onclick="location.reload();">
+                  🔄 Refresh Page
+                </button>
+              </div>
+            </div>
+          `;
+        }
       } else {
         // Display the summary with a regenerate option
         let formattedSummary;
@@ -1643,11 +1660,31 @@ class YouTubeSummarizer {
   displayError(message) {
     if (!this.summaryContainer) return;
     const summaryContent = this.summaryContainer.querySelector('#summary-content');
-    summaryContent.innerHTML = `
-      <div class="summarizer-error">
-        <span>⚠️ ${message}</span>
-      </div>
-    `;
+    
+    // Check if this is a free plan limit error
+    const isLimitError = message.includes('Free Plan Limit Reached');
+    
+    if (isLimitError) {
+      // Show upgrade prompt with button
+      summaryContent.innerHTML = `
+        <div class="summarizer-error limit-error">
+          <div class="limit-error-content">
+            ${message.split('\n').map(line => `<div>${line}</div>`).join('')}
+          </div>
+          <div class="error-actions">
+            <button class="upgrade-btn" onclick="window.open('https://www.clicksummary.com/pricing', '_blank');">
+              ✨ Upgrade to Pro Plan
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      summaryContent.innerHTML = `
+        <div class="summarizer-error">
+          <span>⚠️ ${message}</span>
+        </div>
+      `;
+    }
   }
 
   // Copy and Export functionality
@@ -2407,11 +2444,14 @@ ${content}
     }
     
     // Check for daily limit errors
-    if (errorMessage.includes('Daily limit reached') || errorMessage.includes('Daily chat limit reached')) {
+    if (errorMessage.includes('Daily limit reached') || 
+        errorMessage.includes('Daily chat limit reached') || 
+        errorMessage.includes('Free Plan Limit Reached') ||
+        errorMessage.includes('limit') && errorMessage.includes('free summaries')) {
       if (type === 'chat') {
-        return `🔒 You've reached your daily chat limit! Free users get 1 chat per day. <a href="https://www.clicksummary.com/pricing" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Upgrade to Premium</a> for unlimited AI chat conversations.`;
+        return `🔒 You've reached your monthly chat limit! Free users get 5 chats per month. <a href="https://www.clicksummary.com/pricing" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Upgrade to Pro Plan</a> for unlimited AI chat conversations.`;
       } else {
-        return `🔒 You've reached your daily summary limit! Free users get 5 summaries per day. <a href="https://www.clicksummary.com/pricing" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Upgrade to Premium</a> for unlimited summaries.`;
+        return `🔒 You've reached your daily summary limit! Free users get 3 summaries per day. <a href="https://www.clicksummary.com/pricing" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Upgrade to Pro Plan</a> for unlimited summaries.`;
       }
     }
     
@@ -2427,24 +2467,29 @@ ${content}
     
     // Check for rate limit errors (server-side)
     if (errorMessage.includes('Rate limit exceeded')) {
-      return `⏰ Our servers are busy right now. Please wait a moment and try again.`;
+      return `⏰ Too many requests right now. Please wait 1-2 minutes and try again. If this continues, contact support at <a href="https://www.clicksummary.com/support" target="_blank" style="color: #8b5cf6; text-decoration: underline;">clicksummary.com/support</a>`;
     }
     
     // Check for network/connection errors
     if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network') || errorMessage.includes('timeout')) {
-      return `🌐 Connection issue detected. Please check your internet connection and try again.`;
+      return `🌐 Connection issue detected. Try these steps:<br>1. Check your internet connection<br>2. Refresh this page (F5)<br>3. If issue persists, try disabling other extensions temporarily`;
     }
     
     // Check for transcript-related errors
     if (errorMessage.includes('transcript') || errorMessage.includes('captions')) {
-      return `📝 This video doesn't have transcripts or captions available. ClickSummary needs captions to generate summaries.`;
+      return `📝 This video doesn't have captions available. ClickSummary needs captions to work. Try:<br>1. Choose a different video with captions<br>2. Enable auto-generated captions if available<br>3. Most popular videos have captions`;
     }
     
-    // Default user-friendly error for any other errors
+    // Check for server errors
+    if (errorMessage.includes('500') || errorMessage.includes('Internal server error')) {
+      return `⚠️ Server error occurred. This is temporary. Try:<br>1. Wait 30 seconds and try again<br>2. Refresh the page (F5)<br>3. If it continues, report at <a href="https://www.clicksummary.com/support" target="_blank" style="color: #8b5cf6; text-decoration: underline;">clicksummary.com/support</a>`;
+    }
+    
+    // Actionable fallback errors
     if (type === 'chat') {
-      return `💬 Unable to process your question right now. Please try asking something else or try again in a moment.`;
+      return `💬 Unable to process your question. Try:<br>1. Rephrase your question more simply<br>2. Make sure the video has been summarized first<br>3. Refresh the page (F5) and try again<br>4. Check if you've reached your monthly chat limit (5 chats/month for free users)`;
     } else {
-      return `📄 Unable to generate summary right now. Please try again in a moment or try a different video.`;
+      return `📄 Unable to generate summary. Try these steps:<br>1. Refresh the page (F5)<br>2. Try a different video<br>3. Check if the video has captions enabled<br>4. Make sure you're signed in<br>5. Check if you've reached your daily limit (3 summaries/day for free users)`;
     }
   }
 

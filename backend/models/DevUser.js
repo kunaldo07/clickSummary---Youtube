@@ -31,20 +31,12 @@ class DevUser {
       lastResetDate: new Date(),
       summariesToday: 0,
       chatQueriesToday: 0,
-      lastDailyReset: new Date()
+      lastDailyReset: new Date(),
+      chatQueriesThisCycle: 0,
+      chatRenewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     };
     this.lastLoginAt = data.lastLoginAt || new Date();
     this.lastActiveAt = data.lastActiveAt || new Date();
-    this.signInHistory = data.signInHistory || [];
-    this.analytics = data.analytics || {
-      totalSignIns: 0,
-      firstSignInAt: new Date(),
-      deviceInfo: {
-        lastDevice: 'Unknown',
-        lastBrowser: 'Unknown',
-        lastOS: 'Unknown'
-      }
-    };
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
   }
@@ -57,106 +49,8 @@ class DevUser {
 
   recordSignIn(req) {
     const now = new Date();
-    
-    // Update basic login timestamps
     this.lastLoginAt = now;
     this.lastActiveAt = now;
-    
-    // Increment total sign-ins
-    this.analytics.totalSignIns += 1;
-    
-    // Set first sign-in if not already set
-    if (!this.analytics.firstSignInAt) {
-      this.analytics.firstSignInAt = now;
-    }
-    
-    // Extract device/browser information from User-Agent
-    const userAgent = req.get('User-Agent') || 'Unknown';
-    const deviceInfo = this.parseUserAgent(userAgent);
-    
-    // Update device info
-    this.analytics.deviceInfo = {
-      lastDevice: deviceInfo.device,
-      lastBrowser: deviceInfo.browser,
-      lastOS: deviceInfo.os
-    };
-    
-    // Add sign-in event to history (keep last 50 entries)
-    const signInEvent = {
-      timestamp: now,
-      method: 'google_oauth',
-      ipAddress: this.getClientIP(req),
-      userAgent: userAgent
-    };
-    
-    this.signInHistory.unshift(signInEvent);
-    
-    // Keep only last 50 sign-in records
-    if (this.signInHistory.length > 50) {
-      this.signInHistory = this.signInHistory.slice(0, 50);
-    }
-  }
-
-  parseUserAgent(userAgent) {
-    const browser = this.getBrowser(userAgent);
-    const os = this.getOS(userAgent);
-    const device = this.getDevice(userAgent);
-    
-    return { browser, os, device };
-  }
-
-  getBrowser(userAgent) {
-    if (userAgent.includes('Chrome')) return 'Chrome';
-    if (userAgent.includes('Firefox')) return 'Firefox';
-    if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'Safari';
-    if (userAgent.includes('Edge')) return 'Edge';
-    if (userAgent.includes('Opera')) return 'Opera';
-    return 'Unknown';
-  }
-
-  getOS(userAgent) {
-    if (userAgent.includes('Windows')) return 'Windows';
-    if (userAgent.includes('Mac OS')) return 'macOS';
-    if (userAgent.includes('Linux')) return 'Linux';
-    if (userAgent.includes('Android')) return 'Android';
-    if (userAgent.includes('iOS')) return 'iOS';
-    return 'Unknown';
-  }
-
-  getDevice(userAgent) {
-    if (userAgent.includes('Mobile')) return 'Mobile';
-    if (userAgent.includes('Tablet')) return 'Tablet';
-    return 'Desktop';
-  }
-
-  getClientIP(req) {
-    // In production with trust proxy, req.ip will have the real client IP
-    // In development without trust proxy, fallback to connection details
-    
-    // Try req.ip first (works with trust proxy)
-    if (req.ip && req.ip !== '::1' && req.ip !== '127.0.0.1') {
-      return req.ip;
-    }
-    
-    // Fallback to forwarded headers (manual parsing for development)
-    const forwarded = req.headers['x-forwarded-for'];
-    if (forwarded) {
-      const ips = forwarded.split(',').map(ip => ip.trim());
-      const realIP = ips.find(ip => ip !== '::1' && ip !== '127.0.0.1');
-      if (realIP) return realIP;
-    }
-    
-    // Fallback to real IP header
-    const realIP = req.headers['x-real-ip'];
-    if (realIP && realIP !== '::1' && realIP !== '127.0.0.1') {
-      return realIP;
-    }
-    
-    // Final fallback to connection details
-    return req.connection?.remoteAddress || 
-           req.socket?.remoteAddress ||
-           (req.connection?.socket ? req.connection.socket.remoteAddress : null) ||
-           'localhost';
   }
 
   // Virtual for checking if subscription is active
@@ -216,12 +110,32 @@ class DevUser {
 
   // Get daily limits based on subscription plan
   getDailyLimits() {
-    const isPaid = this.canUsePremiumFeatures() || this.subscription.planType !== 'free';
+    // Only paid plans (monthly) get unlimited access, not trial users
+    const isPaid = this.subscription.planType === 'monthly' && this.hasActiveSubscription;
     
     return {
-      summaries: isPaid ? -1 : 5, // -1 means unlimited
-      chatQueries: isPaid ? -1 : 1
+      summaries: isPaid ? -1 : 3, // -1 means unlimited, free users get 3/day
+      chatQueries: isPaid ? -1 : 5 // For paid users unlimited, free users get 5/month (checked separately)
     };
+  }
+
+  // Method to reset monthly chat usage (30-day cycles from account creation)
+  resetMonthlyChatUsage() {
+    const now = new Date();
+    
+    // Initialize chatRenewalDate if not set (for existing users)
+    if (!this.usage.chatRenewalDate) {
+      this.usage.chatRenewalDate = new Date(this.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
+    
+    // Check if renewal date has passed
+    if (now >= this.usage.chatRenewalDate) {
+      this.usage.chatQueriesThisCycle = 0;
+      // Set next renewal date (30 days from now)
+      this.usage.chatRenewalDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      return true;
+    }
+    return false;
   }
 
   // Check if user can create a summary
@@ -247,28 +161,33 @@ class DevUser {
 
   // Check if user can use chat feature
   canUseChat() {
-    this.resetDailyUsage(); // Auto-reset if new day
+    this.resetMonthlyChatUsage(); // Auto-reset if 30-day cycle passed
     
-    const limits = this.getDailyLimits();
+    // Only paid plans (monthly) get unlimited access, not trial users
+    const isPaid = this.subscription.planType === 'monthly' && this.hasActiveSubscription;
     
     // Unlimited for paid users
-    if (limits.chatQueries === -1) {
+    if (isPaid) {
       return { allowed: true, remaining: -1 };
     }
     
-    // Check free user limits
-    const remaining = limits.chatQueries - this.usage.chatQueriesToday;
+    // Check free user monthly limits (5 chats per 30-day cycle)
+    const limit = 5;
+    const remaining = limit - this.usage.chatQueriesThisCycle;
     return {
       allowed: remaining > 0,
       remaining: Math.max(0, remaining),
-      limit: limits.chatQueries,
-      used: this.usage.chatQueriesToday
+      limit: limit,
+      used: this.usage.chatQueriesThisCycle,
+      renewalDate: this.usage.chatRenewalDate
     };
   }
 
   // Method to increment usage
   incrementUsage(type, cost = 0) {
+    this.resetMonthlyUsage(); // Auto-reset if new month
     this.resetDailyUsage(); // Auto-reset if new day
+    this.resetMonthlyChatUsage(); // Auto-reset if 30-day cycle passed
     
     if (type === 'summary') {
       this.usage.summariesThisMonth += 1;
@@ -276,6 +195,7 @@ class DevUser {
     } else if (type === 'chat') {
       this.usage.chatQueriesThisMonth += 1;
       this.usage.chatQueriesToday += 1;
+      this.usage.chatQueriesThisCycle += 1; // Track monthly cycle usage
     }
     
     this.usage.costThisMonth += cost;
@@ -333,10 +253,9 @@ class DevUser {
       isAdmin: this.isAdmin,
       adminPermissions: this.adminPermissions,
       subscription: this.subscription,
+      usage: this.usage,
       lastLoginAt: this.lastLoginAt,
       lastActiveAt: this.lastActiveAt,
-      signInHistory: this.signInHistory,
-      analytics: this.analytics,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt
     };

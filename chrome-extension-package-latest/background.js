@@ -76,9 +76,10 @@ const getWebsiteBaseURL = async () => {
 };
 
 // Initialize CONFIG with async environment detection
+// Start with production defaults to avoid null URLs if async init is slow
 let CONFIG = {
-  API_BASE_URL: null,
-  WEBSITE_BASE_URL: null,
+  API_BASE_URL: 'https://api.clicksummary.com/api',
+  WEBSITE_BASE_URL: 'https://www.clicksummary.com',
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
   environment: { isDevelopment: false, isProduction: true }
@@ -211,6 +212,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .then(summary => {
           console.log('✅ Advanced summarize success, sending response');
           sendResponse({ summary });
+          
+          // Notify popup to refresh usage display
+          chrome.runtime.sendMessage({ action: 'usageUpdated' }).catch(() => {
+            // Popup might not be open, ignore error
+          });
         })
         .catch(error => {
           console.error('❌ Advanced summarize error:', error);
@@ -246,7 +252,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'chatQuery') {
       console.log('🎯 Handling chatQuery action');
       handleChatQuery(request.data)
-        .then(answer => sendResponse({ answer }))
+        .then(answer => {
+          sendResponse({ answer });
+          
+          // Notify popup to refresh usage display
+          chrome.runtime.sendMessage({ action: 'usageUpdated' }).catch(() => {
+            // Popup might not be open, ignore error
+          });
+        })
         .catch(error => sendResponse({ error: error.message }));
       return true;
     }
@@ -719,10 +732,23 @@ async function callSecureBackend(endpoint, data, userToken) {
         } else if (response.status === 429) {
           if (errorData.code === 'DAILY_LIMIT_EXCEEDED') {
             const details = errorData.details || {};
-            throw new Error(`Daily limit reached! You've used ${details.used}/${details.limit} summaries today. ${details.planType === 'free' ? 'Upgrade to Premium for unlimited summaries.' : 'Limit resets tomorrow.'}`);
-          } else if (errorData.code === 'DAILY_CHAT_LIMIT_EXCEEDED') {
+            if (details.planType === 'free') {
+              throw new Error(`🚀 Free Plan Limit Reached!\n\nYou've used all ${details.limit} free summaries today (${details.used}/${details.limit}).\n\n✨ Subscribe to Pro Plan for:\n• Unlimited summaries\n• Unlimited chat queries\n• Priority support\n\nUpgrade now at clicksummary.com/pricing`);
+            } else {
+              throw new Error(`Daily limit reached! You've used ${details.used}/${details.limit} summaries today. Limit resets tomorrow.`);
+            }
+          } else if (errorData.code === 'MONTHLY_CHAT_LIMIT_EXCEEDED') {
             const details = errorData.details || {};
-            throw new Error(`Daily chat limit reached! You've used ${details.used}/${details.limit} chat queries today. ${details.planType === 'free' ? 'Upgrade to Premium for unlimited chat.' : 'Limit resets tomorrow.'}`);
+            const renewalDate = details.renewalDate ? new Date(details.renewalDate).toLocaleDateString() : 'soon';
+            if (details.planType === 'free') {
+              throw new Error(`🚀 Free Plan Limit Reached!\n\nYou've used all ${details.limit} free chat queries this month (${details.used}/${details.limit}).\n\n✨ Subscribe to Pro Plan for:\n• Unlimited summaries\n• Unlimited chat queries\n• Priority support\n\nUpgrade now at clicksummary.com/pricing\n\n📅 Free plan resets on ${renewalDate}`);
+            } else {
+              throw new Error(`Monthly chat limit reached! You've used ${details.used}/${details.limit} chat queries this month. Limit resets on ${renewalDate}.`);
+            }
+          } else if (errorData.code === 'DAILY_CHAT_LIMIT_EXCEEDED') {
+            // Legacy support for old error code
+            const details = errorData.details || {};
+            throw new Error(`Chat limit reached! You've used ${details.used}/${details.limit} chat queries. ${details.planType === 'free' ? 'Upgrade to Premium for unlimited chat.' : 'Limit resets soon.'}`);
           } else {
             throw new Error(errorData.error || 'Rate limit exceeded. Please try again later.');
           }

@@ -428,18 +428,9 @@ async function updatePlanDetails(user, token) {
     
     if (planType === 'free') {
       planName.textContent = 'Free Plan';
-      planStatus.textContent = '7-Day Trial';
-      planStatus.className = 'plan-badge trial';
+      planStatus.textContent = 'Active';
+      planStatus.className = 'plan-badge free';
       upgradeBtn.classList.remove('hidden');
-      
-      if (trialEndsAt) {
-        const trialDate = new Date(trialEndsAt);
-        const now = new Date();
-        const daysLeft = Math.max(0, Math.ceil((trialDate - now) / (1000 * 60 * 60 * 24)));
-        planExpiry.textContent = `${daysLeft} days left in trial`;
-      } else {
-        planExpiry.textContent = 'Trial period';
-      }
     } else if (planType === 'monthly') {
       planName.textContent = 'Premium Plan';
       planStatus.textContent = 'Active';
@@ -455,14 +446,14 @@ async function updatePlanDetails(user, token) {
     }
     
     // Fetch usage information from backend
-    await fetchAndDisplayUsage(token, summariesCount);
+    await fetchAndDisplayUsage(token, summariesCount, planType);
     
   } catch (error) {
     console.error('Error updating plan details:', error);
   }
 }
 
-async function fetchAndDisplayUsage(token, summariesElement) {
+async function fetchAndDisplayUsage(token, summariesElement, planType) {
   try {
     console.log('📊 Fetching usage information...');
     
@@ -481,19 +472,60 @@ async function fetchAndDisplayUsage(token, summariesElement) {
     const usageData = await response.json();
     console.log('📈 Usage data received:', usageData);
 
-    // Update summary count with usage info
+    // Update summary count - show REMAINING (decreasing)
+    const chatElement = document.getElementById('chat-count');
+    const planExpiry = document.getElementById('plan-expiry');
+    
     if (usageData.limits.summaries === -1) {
-      summariesElement.textContent = `${usageData.usage.summaries.today} today (Unlimited)`;
+      summariesElement.textContent = '∞ Unlimited';
     } else {
-      summariesElement.textContent = `${usageData.usage.summaries.today}/${usageData.limits.summaries} today`;
+      const remaining = usageData.usage.summaries.remaining || 0;
+      const limit = usageData.limits.summaries;
+      summariesElement.textContent = `${remaining}/${limit}`;
+      
+      // Add color coding
+      if (remaining === 0) {
+        summariesElement.style.color = '#dc2626';
+      } else if (remaining === 1) {
+        summariesElement.style.color = '#f59e0b';
+      } else {
+        summariesElement.style.color = '#10b981';
+      }
     }
 
-    // Update plan expiry with chat usage info
-    const planExpiry = document.getElementById('plan-expiry');
+    // Update chat count - show REMAINING (decreasing)
     if (usageData.limits.chatQueries === -1) {
-      planExpiry.textContent = `Chat: Unlimited`;
+      chatElement.textContent = '∞ Unlimited';
     } else {
-      planExpiry.textContent = `Chat: ${usageData.usage.chat.today}/${usageData.limits.chatQueries} today`;
+      const chatRemaining = usageData.usage.chat.remaining || 0;
+      const chatLimit = usageData.limits.chatQueries;
+      chatElement.textContent = `${chatRemaining}/${chatLimit}`;
+      
+      // Add color coding
+      if (chatRemaining === 0) {
+        chatElement.style.color = '#dc2626';
+      } else if (chatRemaining <= 1) {
+        chatElement.style.color = '#f59e0b';
+      } else {
+        chatElement.style.color = '#10b981';
+      }
+    }
+
+    // Update renewal date
+    if (planType === 'free' && usageData.usage.chat.renewalDate) {
+      const renewalDate = new Date(usageData.usage.chat.renewalDate);
+      const now = new Date();
+      const daysUntilRenewal = Math.ceil((renewalDate - now) / (1000 * 60 * 60 * 24));
+      
+      if (daysUntilRenewal > 0) {
+        planExpiry.textContent = `${daysUntilRenewal} day${daysUntilRenewal === 1 ? '' : 's'} (${renewalDate.toLocaleDateString()})`;
+      } else {
+        planExpiry.textContent = 'Today';
+      }
+    } else if (usageData.limits.summaries === -1) {
+      planExpiry.textContent = 'Active subscription';
+    } else {
+      planExpiry.textContent = 'Daily at midnight';
     }
 
     // Show upgrade button if user has reached limits
@@ -508,7 +540,8 @@ async function fetchAndDisplayUsage(token, summariesElement) {
 
   } catch (error) {
     console.error('❌ Error fetching usage:', error);
-    summariesElement.textContent = 'Unable to load usage';
+    summariesElement.textContent = 'Unable to load';
+    document.getElementById('chat-count').textContent = 'Unable to load';
   }
 }
 
@@ -707,6 +740,28 @@ function getInitials(name) {
   return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
 }
 
+// Refresh usage display without full reinitialization
+async function refreshUsageDisplay() {
+  try {
+    console.log('📊 Refreshing usage display...');
+    const result = await chrome.storage.local.get(['youtube_summarizer_token', 'youtube_summarizer_user']);
+    
+    if (result.youtube_summarizer_token && result.youtube_summarizer_user) {
+      const user = JSON.parse(result.youtube_summarizer_user);
+      const token = result.youtube_summarizer_token;
+      const planType = user.subscription?.planType || 'free';
+      
+      const summariesElement = document.getElementById('summaries-count');
+      if (summariesElement) {
+        await fetchAndDisplayUsage(token, summariesElement, planType);
+        console.log('✅ Usage display refreshed');
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error refreshing usage display:', error);
+  }
+}
+
 // Handle external links
 document.addEventListener('click', (e) => {
   if (e.target.tagName === 'A' && e.target.href && e.target.href.startsWith('http')) {
@@ -715,10 +770,14 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Listen for auth changes from the background script
+// Listen for auth changes and usage updates from the background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'authStatusChanged') {
     // Reinitialize popup when auth status changes
     initializePopup();
+  } else if (message.action === 'usageUpdated') {
+    // Refresh usage display when user creates summaries or uses chat
+    console.log('📊 Usage updated notification received');
+    refreshUsageDisplay();
   }
 });
