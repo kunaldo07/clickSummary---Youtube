@@ -130,14 +130,18 @@ async function checkAuthenticationStatus() {
 async function validateTokenWithBackend(token) {
   try {
     console.log('🔐 Validating token with backend...');
+    console.log('🔗 Backend URL:', BACKEND_URL);
+    console.log('🎫 Token length:', token?.length);
     
-    const response = await fetch(`${BACKEND_URL}/auth/validate`, {
-      method: 'GET',
+    const response = await fetch(`${BACKEND_URL}/auth/verify`, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({ token })
     });
+    
+    console.log('📡 Validation response status:', response.status);
     
     if (response.ok) {
       const data = await response.json();
@@ -148,11 +152,14 @@ async function validateTokenWithBackend(token) {
       return false;
     } else {
       console.warn('⚠️ Token validation failed with status:', response.status);
+      const errorText = await response.text().catch(() => 'No error text');
+      console.warn('⚠️ Error response:', errorText);
       // On network errors or other issues, assume token is still valid to avoid false negatives
       return true;
     }
   } catch (error) {
-    console.warn('⚠️ Token validation error (assuming valid):', error);
+    console.warn('⚠️ Token validation error (assuming valid):', error.message);
+    console.warn('⚠️ Error details:', error);
     // On network errors, assume token is still valid to avoid disrupting user experience
     return true;
   }
@@ -381,25 +388,37 @@ function setupNotAuthenticatedHandlers() {
 async function showAuthenticatedView(authData) {
   const { user, token } = authData;
   
-  // Update header
-  document.getElementById('header-subtitle').textContent = `Welcome back, ${user.name.split(' ')[0]}!`;
-  
   // Update user profile
   const userAvatar = document.getElementById('user-avatar');
   const userName = document.getElementById('user-name');
-  const userEmail = document.getElementById('user-email');
+  const planBadge = document.getElementById('plan-badge');
   
-  if (user.picture) {
-    userAvatar.src = user.picture;
-    userAvatar.onerror = () => {
-      userAvatar.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiM4YjVjZjYiLz4KPHR4dCB4PSI1MCUiIHk9IjUwJSIgZHk9IjAuMzVlbSIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTRweCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjwvdHh0Pgo8L3N2Zz4K';
-    };
-  } else {
-    userAvatar.src = generateInitialsAvatar(user.name);
+  if (userAvatar) {
+    if (user.picture) {
+      userAvatar.src = user.picture;
+      userAvatar.onerror = () => {
+        userAvatar.src = generateInitialsAvatar(user.name);
+      };
+    } else {
+      userAvatar.src = generateInitialsAvatar(user.name);
+    }
   }
   
-  userName.textContent = user.name;
-  userEmail.textContent = user.email;
+  if (userName) {
+    userName.textContent = user.name;
+  }
+  
+  // Update plan badge
+  const planType = user.subscription?.planType || 'free';
+  if (planBadge) {
+    if (planType === 'monthly') {
+      planBadge.textContent = 'Premium';
+      planBadge.className = 'badge premium';
+    } else {
+      planBadge.textContent = 'Free Plan';
+      planBadge.className = 'badge';
+    }
+  }
   
   // Update plan details
   await updatePlanDetails(user, token);
@@ -413,35 +432,31 @@ async function showAuthenticatedView(authData) {
 
 async function updatePlanDetails(user, token) {
   try {
-    // Update basic plan info
-    const planName = document.getElementById('plan-name');
-    const planStatus = document.getElementById('plan-status');
+    // Get elements
     const summariesCount = document.getElementById('summaries-count');
     const planExpiry = document.getElementById('plan-expiry');
     const upgradeBtn = document.getElementById('upgrade-plan-btn');
     
     // Determine plan type
-    const isActive = user.subscription?.isActive || false;
     const planType = user.subscription?.planType || 'free';
-    const trialEndsAt = user.subscription?.trialEndsAt;
     const endDate = user.subscription?.endDate;
     
-    if (planType === 'free') {
-      planName.textContent = 'Free Plan';
-      planStatus.textContent = 'Active';
-      planStatus.className = 'plan-badge free';
-      upgradeBtn.classList.remove('hidden');
-    } else if (planType === 'monthly') {
-      planName.textContent = 'Premium Plan';
-      planStatus.textContent = 'Active';
-      planStatus.className = 'plan-badge premium';
-      upgradeBtn.classList.add('hidden');
-      
-      if (endDate) {
-        const expiryDate = new Date(endDate);
-        planExpiry.textContent = expiryDate.toLocaleDateString();
+    // Show/hide upgrade button based on plan
+    if (upgradeBtn) {
+      if (planType === 'free') {
+        upgradeBtn.classList.remove('hidden');
       } else {
-        planExpiry.textContent = 'Active subscription';
+        upgradeBtn.classList.add('hidden');
+      }
+    }
+    
+    // Update expiry text
+    if (planExpiry) {
+      if (planType === 'monthly' && endDate) {
+        const expiryDate = new Date(endDate);
+        planExpiry.textContent = `Renews ${expiryDate.toLocaleDateString()}`;
+      } else {
+        planExpiry.textContent = 'Resets daily';
       }
     }
     
@@ -474,58 +489,75 @@ async function fetchAndDisplayUsage(token, summariesElement, planType) {
 
     // Update summary count - show REMAINING (decreasing)
     const chatElement = document.getElementById('chat-count');
+    const summariesProgress = document.getElementById('summaries-progress');
+    const chatProgress = document.getElementById('chat-progress');
     const planExpiry = document.getElementById('plan-expiry');
     
     if (usageData.limits.summaries === -1) {
-      summariesElement.textContent = '∞ Unlimited';
+      summariesElement.textContent = 'Unlimited';
+      if (summariesProgress) summariesProgress.style.width = '100%';
     } else {
       const remaining = usageData.usage.summaries.remaining || 0;
       const limit = usageData.limits.summaries;
-      summariesElement.textContent = `${remaining}/${limit}`;
+      const used = limit - remaining;
+      const percentage = Math.min((used / limit) * 100, 100);
       
-      // Add color coding
-      if (remaining === 0) {
-        summariesElement.style.color = '#dc2626';
-      } else if (remaining === 1) {
-        summariesElement.style.color = '#f59e0b';
-      } else {
-        summariesElement.style.color = '#10b981';
+      summariesElement.textContent = `${used}/${limit} used`;
+      
+      if (summariesProgress) {
+        summariesProgress.style.width = `${percentage}%`;
+        
+        // Add color coding based on remaining
+        summariesProgress.className = 'progress-fill'; // Reset
+        if (remaining === 0) {
+          summariesProgress.classList.add('danger');
+        } else if (remaining === 1) {
+          summariesProgress.classList.add('warning');
+        }
       }
     }
 
     // Update chat count - show REMAINING (decreasing)
     if (usageData.limits.chatQueries === -1) {
-      chatElement.textContent = '∞ Unlimited';
+      chatElement.textContent = 'Unlimited';
+      if (chatProgress) chatProgress.style.width = '100%';
     } else {
       const chatRemaining = usageData.usage.chat.remaining || 0;
       const chatLimit = usageData.limits.chatQueries;
-      chatElement.textContent = `${chatRemaining}/${chatLimit}`;
+      const chatUsed = chatLimit - chatRemaining;
+      const chatPercentage = Math.min((chatUsed / chatLimit) * 100, 100);
       
-      // Add color coding
-      if (chatRemaining === 0) {
-        chatElement.style.color = '#dc2626';
-      } else if (chatRemaining <= 1) {
-        chatElement.style.color = '#f59e0b';
-      } else {
-        chatElement.style.color = '#10b981';
+      chatElement.textContent = `${chatUsed}/${chatLimit} used`;
+      
+      if (chatProgress) {
+        chatProgress.style.width = `${chatPercentage}%`;
+        
+        // Add color coding
+        chatProgress.className = 'progress-fill'; // Reset
+        if (chatRemaining === 0) {
+          chatProgress.classList.add('danger');
+        } else if (chatRemaining <= 1) {
+          chatProgress.classList.add('warning');
+        }
       }
     }
 
-    // Update renewal date
+    // Update chat renewal hint
+    const chatRenewalHint = document.getElementById('chat-renewal');
     if (planType === 'free' && usageData.usage.chat.renewalDate) {
       const renewalDate = new Date(usageData.usage.chat.renewalDate);
       const now = new Date();
       const daysUntilRenewal = Math.ceil((renewalDate - now) / (1000 * 60 * 60 * 24));
       
       if (daysUntilRenewal > 0) {
-        planExpiry.textContent = `${daysUntilRenewal} day${daysUntilRenewal === 1 ? '' : 's'} (${renewalDate.toLocaleDateString()})`;
+        chatRenewalHint.textContent = `Renews in ${daysUntilRenewal} day${daysUntilRenewal === 1 ? '' : 's'}`;
       } else {
-        planExpiry.textContent = 'Today';
+        chatRenewalHint.textContent = 'Renews today';
       }
-    } else if (usageData.limits.summaries === -1) {
-      planExpiry.textContent = 'Active subscription';
+    } else if (usageData.limits.chatQueries === -1) {
+      chatRenewalHint.textContent = 'Unlimited';
     } else {
-      planExpiry.textContent = 'Daily at midnight';
+      chatRenewalHint.textContent = 'Renews in 30 days';
     }
 
     // Show upgrade button if user has reached limits
@@ -688,7 +720,6 @@ async function signOut() {
     // Update popup UI immediately
     showView('not-authenticated-view');
     setupNotAuthenticatedHandlers();
-    document.getElementById('header-subtitle').textContent = 'AI-powered video summaries';
     console.log('✅ Popup UI updated');
     
     // SINGLE simple notification to background script

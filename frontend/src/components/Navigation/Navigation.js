@@ -284,7 +284,8 @@ const Navigation = () => {
 
   const navigationItems = [
     { name: 'Home', href: '/' },
-    { name: 'Pricing', href: '/pricing' }
+    // { name: 'Pricing', href: '/pricing' }, // Temporarily hidden
+    { name: 'Reddit Analyzer', href: '/reddit' }
   ];
 
   // Close menus when clicking outside
@@ -375,10 +376,11 @@ const Navigation = () => {
                       <UserEmail>{user.email}</UserEmail>
                     </UserInfo>
                     
-                    <UserMenuItem onClick={() => window.open('/pricing', '_self')}>
+                    {/* Pricing temporarily hidden */}
+                    {/* <UserMenuItem onClick={() => window.open('/pricing', '_self')}>
                       <span>💎</span>
                       {user.subscription?.isActive ? 'Manage Subscription' : 'Upgrade to Premium'}
-                    </UserMenuItem>
+                    </UserMenuItem> */}
                     
                     <UserMenuItem onClick={handleSignOut}>
                       <span>🚪</span>
@@ -391,11 +393,12 @@ const Navigation = () => {
           ) : (
             <>
               <Link href="/signin" passHref legacyBehavior>
-                <AuthButton>Sign In</AuthButton>
+                <AuthButton $primary>Sign In</AuthButton>
               </Link>
-              <Link href="/pricing" passHref legacyBehavior>
+              {/* Pricing temporarily hidden */}
+              {/* <Link href="/pricing" passHref legacyBehavior>
                 <AuthButton $primary>Get Started</AuthButton>
-              </Link>
+              </Link> */}
             </>
           )}
         </AuthSection>
@@ -443,11 +446,12 @@ const Navigation = () => {
               ) : (
                 <>
                   <Link href="/signin" passHref legacyBehavior>
-                    <AuthButton>Sign In</AuthButton>
+                    <AuthButton $primary>Sign In</AuthButton>
                   </Link>
-                  <Link href="/pricing" passHref legacyBehavior>
+                  {/* Pricing temporarily hidden */}
+                  {/* <Link href="/pricing" passHref legacyBehavior>
                     <AuthButton $primary>Get Started</AuthButton>
-                  </Link>
+                  </Link> */}
                 </>
               )}
             </MobileAuthSection>

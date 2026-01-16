@@ -83,7 +83,14 @@ router.post('/summarize', auth, requireActiveSubscription, checkCostLimit, async
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Check if user can create a summary
+    // Reset daily usage if it's a new day (and save immediately)
+    const wasReset = user.resetDailyUsage();
+    if (wasReset) {
+      console.log(`🔄 Daily usage reset for user ${userId} at midnight`);
+      await user.save();
+    }
+
+    // Check if user can create a summary (after potential reset)
     const summaryCheck = user.canCreateSummary();
     if (!summaryCheck.allowed) {
       const limits = user.getDailyLimits();
@@ -171,7 +178,15 @@ router.post('/chat', auth, requireActiveSubscription, checkCostLimit, async (req
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Check if user can use chat feature
+    // Reset usage cycles if needed (and save immediately)
+    const dailyReset = user.resetDailyUsage();
+    const monthlyReset = user.resetMonthlyChatUsage();
+    if (dailyReset || monthlyReset) {
+      console.log(`🔄 Usage reset for user ${userId} - daily: ${dailyReset}, monthly: ${monthlyReset}`);
+      await user.save();
+    }
+
+    // Check if user can use chat feature (after potential reset)
     const chatCheck = user.canUseChat();
     if (!chatCheck.allowed) {
       return res.status(429).json({ 
@@ -558,8 +573,13 @@ router.get('/usage', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Reset daily usage if needed
-    user.resetDailyUsage();
+    // Reset usage if needed (and save immediately)
+    const dailyReset = user.resetDailyUsage();
+    const monthlyReset = user.resetMonthlyChatUsage();
+    if (dailyReset || monthlyReset) {
+      console.log(`🔄 Usage reset for user ${userId} - daily: ${dailyReset}, monthly: ${monthlyReset}`);
+      await user.save();
+    }
     
     // Get limits and usage info
     const limits = user.getDailyLimits();
@@ -601,6 +621,47 @@ router.get('/usage', auth, async (req, res) => {
   } catch (error) {
     console.error('Usage info error:', error);
     res.status(500).json({ error: 'Failed to get usage information' });
+  }
+});
+
+// Force reset usage (development/admin only)
+router.post('/reset-usage', auth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Get user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Reset all usage counters
+    user.usage.summariesToday = 0;
+    user.usage.chatQueriesToday = 0;
+    user.usage.summariesThisMonth = 0;
+    user.usage.chatQueriesThisMonth = 0;
+    user.usage.chatQueriesThisCycle = 0;
+    user.usage.lastDailyReset = new Date();
+    user.usage.lastResetDate = new Date();
+    
+    await user.save();
+    
+    console.log(`✅ Usage manually reset for user ${userId}`);
+    
+    res.json({
+      success: true,
+      message: 'Usage has been reset',
+      usage: {
+        summariesToday: user.usage.summariesToday,
+        chatQueriesToday: user.usage.chatQueriesToday,
+        summariesThisMonth: user.usage.summariesThisMonth,
+        chatQueriesThisMonth: user.usage.chatQueriesThisMonth
+      }
+    });
+
+  } catch (error) {
+    console.error('Reset usage error:', error);
+    res.status(500).json({ error: 'Failed to reset usage' });
   }
 });
 

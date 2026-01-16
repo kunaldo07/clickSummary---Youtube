@@ -1,4 +1,11 @@
-require('dotenv').config();
+const fs = require('fs');
+const envPath = __dirname + '/.env';
+console.log(`🔧 Loading env from ${envPath} (${fs.existsSync(envPath) ? 'found' : 'missing'})`);
+const dotenvResult = require('dotenv').config({ path: envPath, override: true });
+if (dotenvResult.error) {
+  console.error('❌ Failed to load .env:', dotenvResult.error);
+}
+console.log(`🔐 JWT_SECRET loaded: ${process.env.JWT_SECRET ? 'yes' : 'no'}`);
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -180,6 +187,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/summarizer', require('./routes/summarizer'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/reddit', require('./routes/reddit'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

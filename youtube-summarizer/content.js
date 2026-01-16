@@ -15,6 +15,9 @@ class YouTubeSummarizer {
     this.chatHistory = [];
     this.currentUser = null;
     this.isAuthenticated = false;
+    this.transcriptSearchTerm = '';
+    this.autoScrollEnabled = true;
+    this.transcriptSyncInterval = null;
     this.init();
   }
 
@@ -1997,7 +2000,16 @@ ${content}
     if (this.showingTranscript) {
       // Switch back to summary
       this.showingTranscript = false;
-      transcriptBtn.innerHTML = '📝 Transcript';
+      transcriptBtn.innerHTML = `
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+        Transcript
+      `;
       transcriptBtn.classList.remove('active');
       this.updateSummaryDisplay();
     } else {
@@ -2005,10 +2017,21 @@ ${content}
       this.showingTranscript = true;
       this.showingChat = false; // Hide chat if showing
       const chatBtn = this.summaryContainer.querySelector('#chat-btn');
-      chatBtn.innerHTML = '💬 Chat';
+      chatBtn.innerHTML = `
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+        </svg>
+        Chat
+      `;
       chatBtn.classList.remove('active');
       
-      transcriptBtn.innerHTML = '📝 Hide';
+      transcriptBtn.innerHTML = `
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        Close
+      `;
       transcriptBtn.classList.add('active');
       this.displayTranscriptInSummaryPanel();
     }
@@ -2070,28 +2093,17 @@ ${content}
         return;
       }
 
-      // Debug: Log the transcript format
-      console.log('📝 Transcript data received:', transcript);
-      console.log('📝 Transcript type:', typeof transcript);
-      console.log('📝 Is array:', Array.isArray(transcript));
-
-      // Handle transcript format - should now be an array from getTranscriptSegments
+      // Handle transcript format
       let transcriptArray = [];
       if (Array.isArray(transcript)) {
         transcriptArray = transcript;
-        console.log('📝 Using transcript array directly');
       } else if (typeof transcript === 'string') {
-        // If it's still a string (fallback), convert to segments
-        console.log('📝 Converting string transcript to segments');
         const sentences = transcript.split(/[.!?]+/).filter(s => s.trim().length > 10);
         transcriptArray = sentences.slice(0, 50).map((sentence, index) => ({
           start: index * 8,
           text: sentence.trim(),
           index: index
         }));
-      } else {
-        console.error('📝 Unexpected transcript format:', transcript);
-        throw new Error(`Transcript is not in expected format. Received: ${typeof transcript}`);
       }
 
       if (transcriptArray.length === 0) {
@@ -2103,57 +2115,197 @@ ${content}
         return;
       }
 
-      const transcriptHtml = transcriptArray.map((segment, index) => {
-        console.log('📝 Processing segment:', segment);
-        
-        // Get time - should already be in seconds from getTranscriptSegments
-        const startTime = segment.start || segment.startTime || segment.tStartMs || segment.time || (index * 8);
-        
-        // If startTime is very large, it might be in milliseconds
-        const timeInSeconds = startTime > 3600 ? Math.floor(startTime / 1000) : startTime;
-        const timeStr = this.formatTime(timeInSeconds);
-        
-        // Get text content
-        const text = segment.text || segment.snippet || segment.segs?.[0]?.utf8 || `Segment ${index + 1}`;
-        
-        return `
-          <div class="transcript-segment" data-start="${timeInSeconds}">
-            <span class="transcript-time" data-time="${timeStr}">${timeStr}</span>
-            <span class="transcript-text">${text}</span>
-          </div>
-        `;
-      }).join('');
-
+      // Render search bar and controls
       summaryContent.innerHTML = `
         <div class="transcript-display">
-          <h3 class="transcript-title">📝 Video Transcript</h3>
-          <div class="transcript-segments">${transcriptHtml}</div>
+          <div class="transcript-search-container">
+            <svg class="transcript-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" class="transcript-search-input" placeholder="Search transcript..." value="${this.transcriptSearchTerm}">
+          </div>
+          
+          <div class="transcript-controls">
+            <button class="transcript-control-btn ${this.autoScrollEnabled ? 'active' : ''}" id="toggle-autoscroll">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M19 12l-7 7-7-7"/>
+              </svg>
+              Auto-scroll
+            </button>
+            <button class="transcript-control-btn" id="copy-transcript">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy All
+            </button>
+          </div>
+
+          <div class="transcript-segments" id="transcript-list">
+            ${this.renderTranscriptSegments(transcriptArray)}
+          </div>
         </div>
       `;
 
-      // Add click handlers for transcript timestamps
-      const timeElements = summaryContent.querySelectorAll('.transcript-time');
-      timeElements.forEach(timeElement => {
-        timeElement.addEventListener('click', () => {
-          const timeStr = timeElement.dataset.time;
-          this.jumpToTime(timeStr);
-        });
-      });
+      // Attach Event Listeners
+      this.attachTranscriptListeners(transcriptArray);
+      
+      // Start sync
+      this.startTranscriptSync();
 
     } catch (error) {
       console.error('📝 Error displaying transcript:', error);
-      console.error('📝 Error stack:', error.stack);
-      console.error('📝 Transcript data that caused error:', transcript);
-      
       summaryContent.innerHTML = `
         <div class="summarizer-error">
           <span>⚠️ Failed to load transcript</span>
           <p class="error-details">${error.message}</p>
-          <p style="font-size: 12px; color: #656d76; margin-top: 8px;">
-            Check browser console for detailed debug information.
-          </p>
         </div>
       `;
+    }
+  }
+
+  renderTranscriptSegments(transcriptArray) {
+    const searchTerm = this.transcriptSearchTerm.toLowerCase();
+    
+    return transcriptArray.map((segment, index) => {
+      const startTime = segment.start || segment.startTime || (index * 8);
+      const timeInSeconds = startTime > 3600 ? Math.floor(startTime / 1000) : startTime;
+      const timeStr = this.formatTime(timeInSeconds);
+      const text = segment.text || segment.snippet || '';
+      
+      // Filter if searching
+      if (searchTerm && !text.toLowerCase().includes(searchTerm)) {
+        return '';
+      }
+
+      // Highlight search term
+      let displayText = text;
+      if (searchTerm) {
+        const regex = new RegExp(`(${searchTerm})`, 'gi');
+        displayText = text.replace(regex, '<span class="search-highlight">$1</span>');
+      }
+      
+      return `
+        <div class="transcript-segment" data-start="${timeInSeconds}">
+          <span class="transcript-time" data-time="${timeInSeconds}">${timeStr}</span>
+          <span class="transcript-text">${displayText}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  attachTranscriptListeners(transcriptArray) {
+    const summaryContent = this.summaryContainer.querySelector('#summary-content');
+    
+    // Search
+    const searchInput = summaryContent.querySelector('.transcript-search-input');
+    searchInput.addEventListener('input', (e) => {
+      this.transcriptSearchTerm = e.target.value;
+      const list = summaryContent.querySelector('#transcript-list');
+      list.innerHTML = this.renderTranscriptSegments(transcriptArray);
+      // Re-attach click listeners to new elements
+      this.attachSegmentClickListeners();
+    });
+
+    // Auto-scroll toggle
+    const autoScrollBtn = summaryContent.querySelector('#toggle-autoscroll');
+    autoScrollBtn.addEventListener('click', () => {
+      this.autoScrollEnabled = !this.autoScrollEnabled;
+      autoScrollBtn.classList.toggle('active');
+    });
+
+    // Copy
+    const copyBtn = summaryContent.querySelector('#copy-transcript');
+    copyBtn.addEventListener('click', () => {
+      const fullText = transcriptArray.map(s => `[${this.formatTime(s.start)}] ${s.text}`).join('\n');
+      navigator.clipboard.writeText(fullText).then(() => {
+        const originalText = copyBtn.innerHTML;
+        copyBtn.innerHTML = '✅ Copied!';
+        setTimeout(() => {
+          copyBtn.innerHTML = originalText;
+        }, 2000);
+      });
+    });
+
+    this.attachSegmentClickListeners();
+  }
+
+  attachSegmentClickListeners() {
+    const segments = this.summaryContainer.querySelectorAll('.transcript-segment');
+    segments.forEach(seg => {
+      seg.addEventListener('click', () => {
+        const time = seg.dataset.start;
+        this.jumpToTime(time);
+      });
+    });
+  }
+
+  jumpToTime(seconds) {
+    const video = document.querySelector('video');
+    if (video) {
+      video.currentTime = parseFloat(seconds);
+      video.play();
+    }
+  }
+
+  startTranscriptSync() {
+    if (this.transcriptSyncInterval) clearInterval(this.transcriptSyncInterval);
+    
+    const video = document.querySelector('video');
+    if (!video) return;
+
+    this.transcriptSyncInterval = setInterval(() => {
+      if (!this.showingTranscript) {
+        clearInterval(this.transcriptSyncInterval);
+        return;
+      }
+      
+      const currentTime = video.currentTime;
+      this.highlightCurrentTranscriptSegment(currentTime);
+    }, 500);
+  }
+
+  highlightCurrentTranscriptSegment(currentTime) {
+    const segments = this.summaryContainer?.querySelectorAll('.transcript-segment');
+    if (!segments) return;
+
+    let activeSegment = null;
+
+    // Find active segment
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      const start = parseFloat(segment.dataset.start);
+      // Assume segment lasts until next one starts
+      const nextStart = segments[i+1] ? parseFloat(segments[i+1].dataset.start) : Infinity;
+      
+      if (currentTime >= start && currentTime < nextStart) {
+        activeSegment = segment;
+        break;
+      }
+    }
+
+    if (activeSegment) {
+      // Remove old active class
+      const oldActive = this.summaryContainer.querySelector('.transcript-segment.active');
+      if (oldActive && oldActive !== activeSegment) {
+        oldActive.classList.remove('active');
+      }
+      
+      activeSegment.classList.add('active');
+
+      // Auto-scroll logic
+      if (this.autoScrollEnabled) {
+        const container = this.summaryContainer.querySelector('.transcript-segments');
+        const segmentTop = activeSegment.offsetTop;
+        const containerTop = container.offsetTop;
+        const scrollPosition = segmentTop - containerTop - (container.clientHeight / 2) + (activeSegment.clientHeight / 2);
+        
+        container.scrollTo({
+          top: scrollPosition,
+          behavior: 'smooth'
+        });
+      }
     }
   }
 
@@ -2451,7 +2603,7 @@ ${content}
       if (type === 'chat') {
         return `🔒 You've reached your monthly chat limit! Free users get 5 chats per month. <a href="https://www.clicksummary.com/pricing" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Upgrade to Pro Plan</a> for unlimited AI chat conversations.`;
       } else {
-        return `🔒 You've reached your daily summary limit! Free users get 3 summaries per day. <a href="https://www.clicksummary.com/pricing" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Upgrade to Pro Plan</a> for unlimited summaries.`;
+        return `🔒 You've reached your daily summary limit! Free users get 3 summaries per day (resets at midnight). <a href="https://www.clicksummary.com/pricing" target="_blank" style="color: #8b5cf6; text-decoration: underline;">Upgrade to Pro Plan</a> for unlimited summaries.`;
       }
     }
     
@@ -2489,7 +2641,7 @@ ${content}
     if (type === 'chat') {
       return `💬 Unable to process your question. Try:<br>1. Rephrase your question more simply<br>2. Make sure the video has been summarized first<br>3. Refresh the page (F5) and try again<br>4. Check if you've reached your monthly chat limit (5 chats/month for free users)`;
     } else {
-      return `📄 Unable to generate summary. Try these steps:<br>1. Refresh the page (F5)<br>2. Try a different video<br>3. Check if the video has captions enabled<br>4. Make sure you're signed in<br>5. Check if you've reached your daily limit (3 summaries/day for free users)`;
+      return `📄 Unable to generate summary. Try these steps:<br>1. Refresh the page (F5)<br>2. Try a different video<br>3. Check if the video has captions enabled<br>4. Make sure you're signed in<br>5. Check if you've reached your daily limit (3 summaries/day, resets at midnight)`;
     }
   }
 

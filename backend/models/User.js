@@ -56,13 +56,17 @@ const userSchema = new mongoose.Schema({
     chatQueriesThisMonth: { type: Number, default: 0 },
     costThisMonth: { type: Number, default: 0 },
     lastResetDate: { type: Date, default: Date.now },
-    // Daily usage tracking for limits
+    // Daily usage tracking for limits (YouTube)
     summariesToday: { type: Number, default: 0 },
     chatQueriesToday: { type: Number, default: 0 },
     lastDailyReset: { type: Date, default: Date.now },
-    // Monthly chat tracking (30-day cycles from account creation)
+    // Monthly chat tracking (30-day cycles from account creation) (YouTube)
     chatQueriesThisCycle: { type: Number, default: 0 },
-    chatRenewalDate: { type: Date, default: null }
+    chatRenewalDate: { type: Date, default: null },
+    // Reddit usage tracking (monthly cycles from account creation)
+    redditSummariesThisCycle: { type: Number, default: 0 },
+    redditChatsThisCycle: { type: Number, default: 0 },
+    redditRenewalDate: { type: Date, default: null }
   },
   preferences: {
     defaultSummaryType: { 

@@ -76,13 +76,13 @@ const getWebsiteBaseURL = async () => {
 };
 
 // Initialize CONFIG with async environment detection
-// Start with production defaults to avoid null URLs if async init is slow
+// Start with DEVELOPMENT defaults for local testing
 let CONFIG = {
-  API_BASE_URL: 'https://api.clicksummary.com/api',
-  WEBSITE_BASE_URL: 'https://www.clicksummary.com',
+  API_BASE_URL: 'http://localhost:3001/api',
+  WEBSITE_BASE_URL: 'http://localhost:3002',
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
-  environment: { isDevelopment: false, isProduction: true }
+  environment: { isDevelopment: true, isProduction: false }
 };
 
 // Initialize environment detection
@@ -725,7 +725,7 @@ async function callSecureBackend(endpoint, data, userToken) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error(`❌ Backend error response:`, errorData);
+        console.error(`❌ Backend error response:`, JSON.stringify(errorData, null, 2));
         
         if (response.status === 401) {
           throw new Error('Authentication failed. Please sign in again.');
@@ -764,13 +764,14 @@ async function callSecureBackend(endpoint, data, userToken) {
       return result;
 
     } catch (error) {
-      console.error(`❌ Backend call failed (attempt ${attempt + 1}/${CONFIG.RETRY_ATTEMPTS}):`, error);
-      console.error(`❌ Error details:`, {
+      console.error(`❌ Backend call failed (attempt ${attempt + 1}/${CONFIG.RETRY_ATTEMPTS}):`, error.message);
+      console.error(`❌ Error details:`, JSON.stringify({
         name: error.name,
         message: error.message,
         url: url,
-        endpoint: endpoint
-      });
+        endpoint: endpoint,
+        stack: error.stack
+      }, null, 2));
       
       if (error.name === 'AbortError') {
         throw new Error(`Backend request timed out after 30 seconds. Please check if backend is running on ${CONFIG.API_BASE_URL}`);

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Reddit Post Analyzer - Usage</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="popup-header">
+      <div class="header-content">
+        <div class="header-branding">
+          <img src="icons/reddit48.png" alt="Reddit AI" class="popup-icon">
+          <div class="header-text">
+            <h1 class="popup-title">AI Reddit Post Analyzer</h1>
+            <p class="popup-subtitle">Your AI Research Assistant</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-view" class="view">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">Loading usage data...</p>
+    </div>
+
+    <!-- Not Authenticated View -->
+    <div id="not-authenticated-view" class="view" style="display: none;">
+      <div class="auth-prompt">
+        <div class="auth-icon">✨</div>
+        <h2>Unlock AI-Powered Reddit Analysis</h2>
+        <p>Sign in to start summarizing threads and chatting with AI about any Reddit discussion.</p>
+        <div class="auth-benefits">
+          <div class="benefit-item">⚡ 50 free summaries/month</div>
+          <div class="benefit-item">💬 5 free AI chats/month</div>
+          <div class="benefit-item">🎯 Instant insights</div>
+        </div>
+        <a href="https://www.clicksummary.com" target="_blank" class="btn btn-primary">
+          Get Started Free →
+        </a>
+      </div>
+    </div>
+
+    <!-- Authenticated View -->
+    <div id="authenticated-view" class="view" style="display: none;">
+      <!-- User Info -->
+      <div class="user-section">
+        <div class="user-info">
+          <div class="user-avatar" id="user-avatar">
+            <span id="user-initial">U</span>
+          </div>
+          <div class="user-details">
+            <div class="user-name" id="user-name">Loading...</div>
+            <div class="plan-badge-container">
+              <div class="plan-badge" id="plan-badge">Free Plan</div>
+              <button class="upgrade-badge-btn" id="upgrade-badge-btn" style="display: none;">✨ Upgrade</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Usage Stats -->
+      <div class="stats-section">
+        <div class="section-header">
+          <h3 class="section-title">This Month's Activity</h3>
+          <span class="cycle-indicator" id="cycle-indicator">Resets in 30 days</span>
+        </div>
+        
+        <!-- Summaries -->
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-title-group">
+              <span class="stat-icon">⚡</span>
+              <span class="stat-label">Thread Summaries</span>
+            </div>
+            <span class="stat-remaining" id="summaries-remaining">50 left</span>
+          </div>
+          <div class="stat-progress">
+            <div class="progress-bar-wrapper">
+              <div class="progress-bar">
+                <div class="progress-fill" id="summaries-progress"></div>
+              </div>
+              <div class="progress-percentage" id="summaries-percentage">0%</div>
+            </div>
+            <div class="stat-numbers">
+              <span class="stat-used"><span id="summaries-used">0</span> used</span>
+              <span class="stat-limit">of <span id="summaries-limit">50</span></span>
+            </div>
+          </div>
+          <div class="stat-hint" id="summaries-hint">💡 Summarize any Reddit thread instantly</div>
+        </div>
+
+        <!-- AI Chats -->
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-title-group">
+              <span class="stat-icon">💬</span>
+              <span class="stat-label">AI Conversations</span>
+            </div>
+            <span class="stat-remaining" id="chats-remaining">5 left</span>
+          </div>
+          <div class="stat-progress">
+            <div class="progress-bar-wrapper">
+              <div class="progress-bar">
+                <div class="progress-fill" id="chats-progress"></div>
+              </div>
+              <div class="progress-percentage" id="chats-percentage">0%</div>
+            </div>
+            <div class="stat-numbers">
+              <span class="stat-used"><span id="chats-used">0</span> used</span>
+              <span class="stat-limit">of <span id="chats-limit">5</span></span>
+            </div>
+          </div>
+          <div class="stat-hint" id="chats-hint">💡 Ask AI anything about the discussion</div>
+        </div>
+      </div>
+
+      <!-- Upgrade Section (for free users) -->
+      <div class="upgrade-section" id="upgrade-section">
+        <div class="upgrade-card">
+          <div class="upgrade-header">
+            <div class="upgrade-badge">✨ PRO</div>
+            <div class="upgrade-title">Unlock Unlimited Analysis</div>
+          </div>
+          <div class="upgrade-benefits">
+            <div class="benefit">∞ Unlimited summaries</div>
+            <div class="benefit">∞ Unlimited AI chats</div>
+            <div class="benefit">⚡ Priority processing</div>
+            <div class="benefit">🎯 Advanced insights</div>
+          </div>
+          <div class="upgrade-cta-wrapper">
+            <a href="https://www.clicksummary.com/pricing" target="_blank" class="btn btn-upgrade">
+              Upgrade to Pro →
+            </a>
+            <p class="upgrade-hint">Join 1,000+ users analyzing Reddit smarter</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pro User Success Message -->
+      <div class="pro-success-section" id="pro-success-section" style="display: none;">
+        <div class="pro-success-card">
+          <div class="pro-badge">✨ PRO MEMBER</div>
+          <p class="pro-message">You have unlimited access to all features!</p>
+          <div class="pro-stats">
+            <div class="pro-stat">
+              <div class="pro-stat-value" id="pro-summaries-used">0</div>
+              <div class="pro-stat-label">Summaries this month</div>
+            </div>
+            <div class="pro-stat">
+              <div class="pro-stat-value" id="pro-chats-used">0</div>
+              <div class="pro-stat-label">AI chats this month</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="popup-footer">
+        <button id="refresh-btn" class="btn-text">🔄 Refresh</button>
+        <a href="https://www.clicksummary.com/pricing" target="_blank" class="btn-text" id="footer-pricing-link">Pricing</a>
+        <button id="sign-out-btn" class="btn-text">Sign Out</button>
+      </div>
+    </div>
+
+    <!-- Error View -->
+    <div id="error-view" class="view" style="display: none;">
+      <div class="error-content">
+        <div class="error-icon">⚠️</div>
+        <h2>Error Loading Data</h2>
+        <p id="error-message">Failed to load usage statistics</p>
+        <button id="retry-btn" class="btn btn-primary">Try Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
