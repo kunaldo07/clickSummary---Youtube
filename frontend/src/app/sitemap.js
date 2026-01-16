@@ -14,6 +14,12 @@ export default function sitemap() {
       priority: 0.9,
     },
     {
+      url: 'https://clicksummary.com/reddit/',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
       url: 'https://clicksummary.com/privacy/',
       lastModified: new Date(),
       changeFrequency: 'monthly',
