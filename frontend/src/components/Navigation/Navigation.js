@@ -284,7 +284,7 @@ const Navigation = () => {
 
   const navigationItems = [
     { name: 'Home', href: '/' },
-    // { name: 'Pricing', href: '/pricing' }, // Temporarily hidden
+    { name: 'YouTube Analyzer', href: '/youtube' },
     { name: 'Reddit Analyzer', href: '/reddit' }
   ];
 

@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useAuth } from '../../hooks/useAuth';
+import config from '../../lib/environment';
+import { redirectToExtension } from '../../utils/extensionHelpers';
 
 // --- Animations ---
 const float = keyframes`
@@ -15,12 +18,6 @@ const float = keyframes`
 const shine = keyframes`
   0% { background-position: 200% center; }
   100% { background-position: -200% center; }
-`;
-
-const pulseGlow = keyframes`
-  0% { box-shadow: 0 0 0 0 rgba(255, 69, 0, 0.4); }
-  70% { box-shadow: 0 0 0 20px rgba(255, 69, 0, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 69, 0, 0); }
 `;
 
 // --- Styled Components ---
@@ -39,8 +36,8 @@ const GradientBackground = styled.div`
   left: 0;
   right: 0;
   height: 100vh;
-  background: radial-gradient(circle at 50% 0%, rgba(255, 69, 0, 0.15), transparent 70%),
-              radial-gradient(circle at 80% 20%, rgba(255, 135, 23, 0.1), transparent 50%);
+  background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15), transparent 70%),
+              radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1), transparent 50%);
   pointer-events: none;
   z-index: 0;
 `;
@@ -59,17 +56,17 @@ const Badge = styled(motion.div)`
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: rgba(255, 69, 0, 0.08);
-  color: #FF4500;
+  background: rgba(99, 102, 241, 0.08);
+  color: #6366f1;
   border-radius: 100px;
   font-size: 0.9rem;
   font-weight: 600;
   margin-bottom: 32px;
-  border: 1px solid rgba(255, 69, 0, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.2);
   cursor: pointer;
   
   &:hover {
-    background: rgba(255, 69, 0, 0.12);
+    background: rgba(99, 102, 241, 0.12);
   }
 `;
 
@@ -90,8 +87,8 @@ const HeroTitle = styled(motion.h1)`
 `;
 
 const Highlight = styled.span`
-  color: #FF4500;
-  -webkit-text-fill-color: #FF4500;
+  color: #6366f1;
+  -webkit-text-fill-color: #6366f1;
   position: relative;
   
   &::after {
@@ -101,7 +98,7 @@ const Highlight = styled.span`
     left: 0;
     width: 100%;
     height: 12px;
-    background: rgba(255, 69, 0, 0.15);
+    background: rgba(99, 102, 241, 0.15);
     z-index: -1;
     transform: rotate(-1deg);
   }
@@ -127,7 +124,7 @@ const CTAContainer = styled(motion.div)`
 `;
 
 const MainButton = styled(motion.a)`
-  background: #FF4500;
+  background: #6366f1;
   color: white;
   padding: 18px 40px;
   border-radius: 12px;
@@ -137,14 +134,15 @@ const MainButton = styled(motion.a)`
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 8px 20px rgba(255, 69, 0, 0.25);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
   transition: transform 0.2s, box-shadow 0.2s;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(255, 69, 0, 0.35);
+    box-shadow: 0 12px 24px rgba(99, 102, 241, 0.35);
   }
 
   &::after {
@@ -162,6 +160,24 @@ const MainButton = styled(motion.a)`
     );
     background-size: 200% 100%;
     animation: ${shine} 3s infinite linear;
+  }
+`;
+
+const SecondaryButton = styled(Link)`
+  background: white;
+  color: #374151;
+  padding: 18px 40px;
+  border-radius: 12px;
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    transform: translateY(-2px);
   }
 `;
 
@@ -204,77 +220,81 @@ const Dot = styled.div`
 const BrowserContent = styled.div`
   padding: 0;
   position: relative;
-  background: #DAE0E6; /* Reddit bg color */
+  background: #f9f9f9; /* YouTube-ish bg */
   min-height: 500px;
 `;
 
-// Mock Reddit UI
-const MockRedditPost = styled.div`
-  background: white;
-  max-width: 800px;
-  margin: 20px auto;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-`;
-
-const MockPostHeader = styled.div`
-  padding: 8px;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-`;
-
-const MockPostContent = styled.div`
-  padding: 20px;
-  height: 300px;
-  background: #f8f9fa;
+// Mock YouTube UI
+const MockYouTubePlayer = styled.div`
+  background: #000;
+  width: 100%;
+  height: 360px;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
 `;
 
-const SkeletonLine = styled.div`
-  height: ${props => props.height || '16px'};
-  width: ${props => props.width || '100%'};
-  background: #eee;
+const MockVideoInfo = styled.div`
+  padding: 20px;
+  background: white;
+`;
+
+const MockVideoTitle = styled.div`
+  height: 24px;
+  width: 60%;
+  background: #e5e7eb;
+  border-radius: 4px;
   margin-bottom: 12px;
+`;
+
+const MockVideoMeta = styled.div`
+  height: 16px;
+  width: 40%;
+  background: #f3f4f6;
   border-radius: 4px;
 `;
 
 const ExtensionOverlay = styled(motion.div)`
   position: absolute;
-  top: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90%;
-  max-width: 600px;
+  top: 20px;
+  right: 20px;
+  width: 320px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.15);
   border: 1px solid #e1e4e8;
   z-index: 10;
   overflow: hidden;
+  height: 460px;
 `;
 
 const OverlayHeader = styled.div`
-  padding: 12px 20px;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #f3f4f6;
   background: white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `;
 
 const OverlayContent = styled.div`
-  padding: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 `;
 
 const SummaryPoint = styled(motion.div)`
-  display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: #333;
+  background: #f9fafb;
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 3px solid #6366f1;
+  font-size: 13px;
   line-height: 1.5;
+  color: #374151;
 `;
 
 // --- Features Grid ---
@@ -314,20 +334,20 @@ const Card = styled(motion.div)`
   &:hover {
     transform: translateY(-5px);
     box-shadow: 0 12px 30px rgba(0,0,0,0.08);
-    border-color: rgba(255, 69, 0, 0.2);
+    border-color: rgba(99, 102, 241, 0.2);
   }
 `;
 
 const IconWrapper = styled.div`
   width: 50px;
   height: 50px;
-  background: rgba(255, 69, 0, 0.1);
+  background: rgba(99, 102, 241, 0.1);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  color: #FF4500;
+  color: #6366f1;
   margin-bottom: 20px;
 `;
 
@@ -351,15 +371,6 @@ const ProofSection = styled.section`
   border-bottom: 1px solid #eee;
 `;
 
-const LogoGrid = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-  opacity: 0.6;
-  filter: grayscale(100%);
-  flex-wrap: wrap;
-`;
-
 const StatBlock = styled.div`
   text-align: center;
 `;
@@ -377,12 +388,9 @@ const StatLabel = styled.div`
   letter-spacing: 1px;
 `;
 
-const RedditPageClient = () => {
-  const CHROME_STORE_URL = "https://chromewebstore.google.com/detail/ai-reddit-post-analyzer/ablekmobghbgmpeklpdbfpnhgeloihop";
-  
-  const { scrollY } = useScroll();
+export default function YouTubePageClient() {
+  const { isAuthenticated } = useAuth();
   const heroRef = useRef(null);
-  const isHeroInView = useInView(heroRef);
 
   return (
     <PageContainer>
@@ -394,8 +402,8 @@ const RedditPageClient = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <span style={{ fontSize: '1.2rem' }}>🚀</span>
-          <span>Now Available on Chrome Web Store</span>
+          <span style={{ fontSize: '1.2rem' }}>✨</span>
+          <span>New: Interactive Transcript Search</span>
         </Badge>
 
         <HeroTitle
@@ -403,7 +411,7 @@ const RedditPageClient = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          Read Reddit <Highlight>10x Faster</Highlight>
+          Watch Videos <Highlight>10x Faster</Highlight>
           <br />with AI Summaries
         </HeroTitle>
 
@@ -412,8 +420,8 @@ const RedditPageClient = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          Instantly summarize long threads, chat with comments, and spot controversial takes.
-          Stop scrolling, start understanding.
+          Get instant AI summaries, ask questions, and search transcripts for any YouTube video. 
+          Stop wasting hours watching content you don't need.
         </HeroSubtitle>
 
         <CTAContainer
@@ -421,19 +429,25 @@ const RedditPageClient = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <MainButton 
-            href={CHROME_STORE_URL} 
-            target="_blank"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <span>Add to Chrome - It's Free</span>
-            <span style={{ fontSize: '1.2rem' }}>→</span>
-          </MainButton>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {!isAuthenticated ? (
+              <>
+                <MainButton href="/pricing">
+                  <span>Start Free Trial</span>
+                  <span style={{ fontSize: '1.2rem' }}>→</span>
+                </MainButton>
+              </>
+            ) : (
+              <MainButton onClick={redirectToExtension}>
+                <span>Add to Chrome</span>
+                <span style={{ fontSize: '1.2rem' }}>→</span>
+              </MainButton>
+            )}
+          </div>
           <SubText>
             <span>✓ No credit card required</span>
             <span>•</span>
-            <span>✓ 5-star rating</span>
+            <span>✓ 4.9/5 Chrome Store rating</span>
           </SubText>
         </CTAContainer>
 
@@ -458,63 +472,72 @@ const RedditPageClient = () => {
               display: 'flex',
               alignItems: 'center'
             }}>
-              🔒 reddit.com/r/technology/comments/ai_revolution...
+              🔒 youtube.com/watch?v=dQw4w9WgXcQ
             </div>
           </BrowserHeader>
           <BrowserContent>
-            <MockRedditPost>
-              <MockPostHeader>
-                <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#FF4500' }}></div>
-                <SkeletonLine width="150px" height="14px" style={{ marginBottom: 0 }} />
-              </MockPostHeader>
-              <MockPostContent>
-                <SkeletonLine width="80%" height="24px" style={{ marginBottom: 20 }} />
-                <SkeletonLine />
-                <SkeletonLine width="90%" />
-                <SkeletonLine width="95%" />
-                <SkeletonLine width="60%" />
-              </MockPostContent>
-            </MockRedditPost>
-
-            <ExtensionOverlay
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 1.2, duration: 0.5 }}
-            >
-              <OverlayHeader>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>🤖</span>
-                  <span style={{ fontWeight: 'bold' }}>AI Summary</span>
-                </div>
-                <div style={{ fontSize: '12px', color: '#888' }}>Just now</div>
-              </OverlayHeader>
-              <OverlayContent>
-                <SummaryPoint
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 1.6 }}
-                >
-                  <span>📌</span>
-                  <span><strong>Main Takeaway:</strong> The community is divided on the new AI regulations, with developers fearing innovation stifling.</span>
-                </SummaryPoint>
-                <SummaryPoint
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 2.2 }}
-                >
-                  <span>🔥</span>
-                  <span><strong>Top Controversy:</strong> Heated debate about open-source models vs corporate control.</span>
-                </SummaryPoint>
-                <SummaryPoint
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 2.8 }}
-                >
-                  <span>💡</span>
-                  <span><strong>Consensus:</strong> Most agree that safety is important, but implementation details are flawed.</span>
-                </SummaryPoint>
-              </OverlayContent>
-            </ExtensionOverlay>
+            <div style={{ display: 'flex', height: '100%' }}>
+              <div style={{ flex: 1 }}>
+                <MockYouTubePlayer>
+                  ▶️ Video Player
+                </MockYouTubePlayer>
+                <MockVideoInfo>
+                  <MockVideoTitle />
+                  <MockVideoMeta />
+                </MockVideoInfo>
+              </div>
+              
+              <ExtensionOverlay
+                initial={{ x: 50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 1.2, duration: 0.5 }}
+              >
+                <OverlayHeader>
+                  <span style={{ fontSize: '18px' }}>✨</span>
+                  <span style={{ fontWeight: 'bold', color: '#6366f1' }}>ClickSummary</span>
+                </OverlayHeader>
+                <OverlayContent>
+                  <SummaryPoint
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 1.6 }}
+                  >
+                    <strong>⚡ Quick Summary:</strong> This video explains the future of AI agents and how they will autonomously perform complex tasks.
+                  </SummaryPoint>
+                  <SummaryPoint
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 2.2 }}
+                  >
+                    <strong>🎯 Key Insight:</strong> Agents are moving from simple chatbots to actionable tools that can browse the web and use apps.
+                  </SummaryPoint>
+                  <SummaryPoint
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 2.8 }}
+                  >
+                    <strong>💡 Takeaway:</strong> Developers should focus on building tool-use capabilities rather than just better LLMs.
+                  </SummaryPoint>
+                  
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 3.4 }}
+                    style={{ 
+                      marginTop: 'auto', 
+                      background: '#f3f4f6', 
+                      padding: '12px', 
+                      borderRadius: '20px',
+                      fontSize: '13px',
+                      color: '#6b7280',
+                      border: '1px solid #e5e7eb'
+                    }}
+                  >
+                    💬 Ask a question about this video...
+                  </motion.div>
+                </OverlayContent>
+              </ExtensionOverlay>
+            </div>
           </BrowserContent>
         </BrowserMockup>
       </HeroSection>
@@ -522,63 +545,63 @@ const RedditPageClient = () => {
       <ProofSection>
         <Grid>
           <StatBlock>
-            <StatVal>10k+</StatVal>
+            <StatVal>20k+</StatVal>
             <StatLabel>Hours Saved</StatLabel>
           </StatBlock>
           <StatBlock>
-            <StatVal>100k+</StatVal>
-            <StatLabel>Summaries Generated</StatLabel>
+            <StatVal>150k+</StatVal>
+            <StatLabel>Videos Summarized</StatLabel>
           </StatBlock>
           <StatBlock>
             <StatVal>4.9/5</StatVal>
-            <StatLabel>Chrome Store Rating</StatLabel>
+            <StatLabel>User Rating</StatLabel>
           </StatBlock>
         </Grid>
       </ProofSection>
 
       <FeaturesSection>
         <SectionHeader>
-          <SectionTitle>Everything You Need</SectionTitle>
-          <HeroSubtitle>Powerful features to help you digest information faster.</HeroSubtitle>
+          <SectionTitle>Everything You Need to Learn Faster</SectionTitle>
+          <HeroSubtitle>Powerful features designed for students, researchers, and professionals.</HeroSubtitle>
         </SectionHeader>
         <Grid>
           <Card>
-            <IconWrapper>⚡</IconWrapper>
+            <IconWrapper>📝</IconWrapper>
             <CardTitle>Instant Summaries</CardTitle>
-            <CardText>Get the gist of any thread in seconds. We analyze posts and hundreds of comments to extract the key points.</CardText>
+            <CardText>Get comprehensive summaries in seconds. Choose from bullet points, paragraphs, or detailed breakdowns.</CardText>
           </Card>
           <Card>
             <IconWrapper>💬</IconWrapper>
-            <CardTitle>Chat with Threads</CardTitle>
-            <CardText>Ask questions like "What are the cons mentioned?" or "Is this product worth it?" and get answers based on user comments.</CardText>
+            <CardTitle>AI Chat Assistant</CardTitle>
+            <CardText>Ask questions like "What did they say about pricing?" and get instant answers based on the video content.</CardText>
+          </Card>
+          <Card>
+            <IconWrapper>📜</IconWrapper>
+            <CardTitle>Transcript Search</CardTitle>
+            <CardText>Search through the video transcript instantly. Click any sentence to jump to that exact moment in the video.</CardText>
           </Card>
           <Card>
             <IconWrapper>🌍</IconWrapper>
-            <CardTitle>Multilingual</CardTitle>
-            <CardText>Translate and summarize threads from any language. Perfect for browsing global communities.</CardText>
-          </Card>
-          <Card>
-            <IconWrapper>🎯</IconWrapper>
-            <CardTitle>Sentiment Analysis</CardTitle>
-            <CardText>Instantly gauge how the community feels about a topic. Positive, negative, or controversial?</CardText>
+            <CardTitle>Multi-Language</CardTitle>
+            <CardText>Summarize videos in any language. Translate foreign content instantly to understand global perspectives.</CardText>
           </Card>
         </Grid>
       </FeaturesSection>
 
       <HeroSection style={{ paddingBottom: '100px', paddingTop: '60px' }}>
-        <HeroTitle style={{ fontSize: '2.5rem' }}>Ready to save time?</HeroTitle>
-        <MainButton 
-          href={CHROME_STORE_URL} 
-          target="_blank"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          style={{ marginTop: '20px' }}
-        >
-          Add to Chrome for Free
-        </MainButton>
+        <HeroTitle style={{ fontSize: '2.5rem' }}>Ready to save 20 hours/week?</HeroTitle>
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginTop: '32px' }}>
+          {!isAuthenticated ? (
+            <MainButton href="/pricing">
+              Get Started for Free
+            </MainButton>
+          ) : (
+            <MainButton onClick={redirectToExtension}>
+              Install Chrome Extension
+            </MainButton>
+          )}
+        </div>
       </HeroSection>
     </PageContainer>
   );
-};
-
-export default RedditPageClient;
+}

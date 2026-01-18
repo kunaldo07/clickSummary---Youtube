@@ -2,87 +2,55 @@
 
 import React from 'react';
 import styled from 'styled-components';
+import { motion } from 'framer-motion';
+
+// --- Styled Components ---
 
 const Container = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 120px 24px 80px;
+  background: #fff;
+  font-family: 'Inter', sans-serif;
+  padding-top: 80px;
+  padding-bottom: 80px;
 `;
 
-const ContentContainer = styled.div`
-  max-width: 900px;
-  margin: 0 auto;
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-`;
-
-const Header = styled.div`
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  color: white;
+const HeaderSection = styled.div`
   text-align: center;
-  padding: 60px 40px;
+  max-width: 800px;
+  margin: 0 auto 60px;
+  padding: 0 24px;
 `;
 
-const HeaderTitle = styled.h1`
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-
-  @media (max-width: 768px) {
-    font-size: 2rem;
-    flex-direction: column;
-    gap: 8px;
-  }
-`;
-
-const HeaderIcon = styled.span`
+const HeaderTitle = styled(motion.h1)`
   font-size: 3rem;
-  
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 24px;
+  letter-spacing: -0.02em;
+
   @media (max-width: 768px) {
-    font-size: 2.5rem;
+    font-size: 2.25rem;
   }
 `;
 
-const HeaderSubtitle = styled.p`
-  font-size: 1.25rem;
-  opacity: 0.9;
-  max-width: 600px;
-  margin: 0 auto;
+const HeaderSubtitle = styled(motion.p)`
+  font-size: 1.125rem;
+  color: #6b7280;
   line-height: 1.6;
-
-  @media (max-width: 768px) {
-    font-size: 1.125rem;
-  }
 `;
 
-const Content = styled.div`
-  padding: 60px 40px;
-  
-  @media (max-width: 768px) {
-    padding: 40px 24px;
-  }
+const ContentContainer = styled(motion.div)`
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 24px;
 `;
 
 const LastUpdated = styled.div`
-  background: #f8fafc;
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 40px;
-  text-align: center;
-  border-left: 4px solid #8b5cf6;
-`;
-
-const LastUpdatedText = styled.p`
-  color: #4b5563;
   font-size: 0.875rem;
-  margin: 0;
-  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 40px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
 `;
 
 const Section = styled.section`
@@ -90,19 +58,17 @@ const Section = styled.section`
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 1.875rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 24px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #e5e7eb;
+  color: #111827;
+  margin-bottom: 16px;
 `;
 
 const SubsectionTitle = styled.h3`
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: #374151;
-  margin: 32px 0 16px;
+  margin: 24px 0 12px;
 `;
 
 const Paragraph = styled.p`
@@ -113,250 +79,169 @@ const Paragraph = styled.p`
 `;
 
 const List = styled.ul`
-  color: #4b5563;
-  line-height: 1.7;
-  margin-bottom: 16px;
+  list-style: disc;
   padding-left: 24px;
+  margin-bottom: 24px;
+  color: #4b5563;
 `;
 
 const ListItem = styled.li`
   margin-bottom: 8px;
-  font-size: 1rem;
+  line-height: 1.6;
 `;
 
-const Strong = styled.strong`
-  color: #1f2937;
-  font-weight: 600;
-`;
-
-const Highlight = styled.span`
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 600;
-`;
-
-const ContactBox = styled.div`
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+const HighlightBox = styled.div`
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
+  padding: 24px;
+  margin: 24px 0;
+`;
+
+const ContactSection = styled.div`
+  background: #f3f4f6;
+  border-radius: 16px;
   padding: 32px;
+  margin-top: 60px;
   text-align: center;
-  border: 2px solid #e2e8f0;
-  margin-top: 40px;
 `;
 
 const ContactTitle = styled.h3`
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 16px;
+  color: #111827;
+  margin-bottom: 12px;
 `;
 
-const ContactEmail = styled.a`
-  color: #8b5cf6;
-  font-size: 1.125rem;
+const EmailLink = styled.a`
+  color: #6366f1;
   font-weight: 600;
   text-decoration: none;
-  
-  &:hover {
-    text-decoration: underline;
-  }
+  &:hover { text-decoration: underline; }
 `;
 
 export default function PrivacyPageClient() {
   return (
     <Container>
-        <ContentContainer>
-          <Header>
-            <HeaderTitle>
-              <HeaderIcon>🔒</HeaderIcon>
-              Privacy Policy
-            </HeaderTitle>
-            <HeaderSubtitle>
-              Your privacy matters to us. Learn how we collect, use, and protect your data.
-            </HeaderSubtitle>
-          </Header>
+      <HeaderSection>
+        <HeaderTitle
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          Privacy Policy
+        </HeaderTitle>
+        <HeaderSubtitle
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          Your privacy is critically important to us. This policy explains how ClickSummary collects, uses, and protects your information.
+        </HeaderSubtitle>
+      </HeaderSection>
 
-          <Content>
-            <LastUpdated>
-              <LastUpdatedText>
-                <Strong>Last Updated:</Strong> January 2025
-              </LastUpdatedText>
-            </LastUpdated>
+      <ContentContainer
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+      >
+        <LastUpdated>Last Updated: January 2025</LastUpdated>
 
-            <Section>
-              <SectionTitle>1. Overview</SectionTitle>
-              <Paragraph>
-                <Highlight>ClickSummary</Highlight> is a Chrome extension that generates AI-powered summaries of YouTube videos. 
-                This privacy policy explains how we collect, use, store, and protect your personal information when you use our service.
-              </Paragraph>
-              <Paragraph>
-                By using ClickSummary, you agree to the collection and use of information as described in this policy.
-              </Paragraph>
-            </Section>
+        <Section>
+          <SectionTitle>1. Introduction</SectionTitle>
+          <Paragraph>
+            ClickSummary ("we", "our", or "us") provides AI-powered summarization tools for YouTube videos and other web content through our Chrome extension and website. We are committed to protecting your personal information and your right to privacy.
+          </Paragraph>
+          <Paragraph>
+            By using our extensions or website, you consent to the data practices described in this policy.
+          </Paragraph>
+        </Section>
 
-            <Section>
-              <SectionTitle>2. Information We Collect</SectionTitle>
-              
-              <SubsectionTitle>2.1 Personally Identifiable Information</SubsectionTitle>
-              <Paragraph>When you sign in with Google, we collect:</Paragraph>
-              <List>
-                <ListItem><Strong>Name</Strong> - For personalization and account identification</ListItem>
-                <ListItem><Strong>Email address</Strong> - For account management and communication</ListItem>
-                <ListItem><Strong>Profile picture</Strong> - For display in the extension interface</ListItem>
-                <ListItem><Strong>Google User ID</Strong> - For secure account linking</ListItem>
-              </List>
+        <Section>
+          <SectionTitle>2. Information We Collect</SectionTitle>
+          
+          <SubsectionTitle>2.1 Personal Information</SubsectionTitle>
+          <Paragraph>
+            When you create an account or sign in via Google, we collect basic profile information to identify you and manage your subscription:
+          </Paragraph>
+          <List>
+            <ListItem><strong>Name & Email Address:</strong> Used for account management, authentication, and communication.</ListItem>
+            <ListItem><strong>Profile Picture:</strong> Displayed within the application interface.</ListItem>
+            <ListItem><strong>Google User ID:</strong> Used to securely link your account.</ListItem>
+          </List>
 
-              <SubsectionTitle>2.2 Authentication Information</SubsectionTitle>
-              <Paragraph>To maintain your login session, we store:</Paragraph>
-              <List>
-                <ListItem><Strong>OAuth tokens</Strong> - Securely stored to keep you signed in</ListItem>
-                <ListItem><Strong>Session credentials</Strong> - For seamless extension functionality</ListItem>
-              </List>
+          <SubsectionTitle>2.2 Usage Data</SubsectionTitle>
+          <Paragraph>
+            To provide our services, we process certain data when you interact with the extension:
+          </Paragraph>
+          <List>
+            <ListItem><strong>Content Data:</strong> YouTube video transcripts, titles, and metadata are processed temporarily to generate summaries and chat responses.</ListItem>
+            <ListItem><strong>Interaction Data:</strong> Chat queries, summary preferences, and feature usage statistics to improve the product.</ListItem>
+            <ListItem><strong>Technical Logs:</strong> Error reports and performance metrics to ensure stability.</ListItem>
+          </List>
+        </Section>
 
-              <SubsectionTitle>2.3 User Activity Data</SubsectionTitle>
-              <Paragraph>To provide and improve our service, we track:</Paragraph>
-              <List>
-                <ListItem><Strong>Summary generation requests</Strong> - Number and timing of summaries</ListItem>
-                <ListItem><Strong>Chat queries</Strong> - Questions asked about video content</ListItem>
-                <ListItem><Strong>Feature usage</Strong> - Which summary formats and lengths you prefer</ListItem>
-                <ListItem><Strong>Error logs</Strong> - Technical issues for debugging purposes</ListItem>
-              </List>
+        <Section>
+          <SectionTitle>3. How We Use Your Data</SectionTitle>
+          <HighlightBox>
+            <strong>Key Principle:</strong> We do not sell your personal data to advertisers or third parties. Your data is used strictly to provide and improve the ClickSummary service.
+          </HighlightBox>
+          <Paragraph>We use the collected information for the following purposes:</Paragraph>
+          <List>
+            <ListItem><strong>Service Delivery:</strong> To generate AI summaries, answer your questions, and maintain your history.</ListItem>
+            <ListItem><strong>Account Management:</strong> To manage your subscription, usage limits, and preferences.</ListItem>
+            <ListItem><strong>Communication:</strong> To send important product updates, security alerts, or support responses.</ListItem>
+            <ListItem><strong>Improvement:</strong> To analyze usage patterns and fix bugs.</ListItem>
+          </List>
+        </Section>
 
-              <SubsectionTitle>2.4 Website Content</SubsectionTitle>
-              <Paragraph>To generate summaries, we process:</Paragraph>
-              <List>
-                <ListItem><Strong>YouTube video transcripts</Strong> - Extracted from videos you choose to summarize</ListItem>
-                <ListItem><Strong>Video metadata</Strong> - Title, duration, and video ID for context</ListItem>
-              </List>
-            </Section>
+        <Section>
+          <SectionTitle>4. Third-Party Processors</SectionTitle>
+          <Paragraph>
+            We use trusted third-party service providers to help us operate our business. These partners are authorized to use your personal information only as necessary to provide these services to us:
+          </Paragraph>
+          <List>
+            <ListItem><strong>OpenAI:</strong> We use OpenAI's API to process text and generate summaries. Data sent to OpenAI via their API is <strong>not</strong> used to train their models.</ListItem>
+            <ListItem><strong>Google Firebase/Auth:</strong> For secure authentication and user management.</ListItem>
+            <ListItem><strong>Stripe (if applicable):</strong> For secure payment processing. We do not store your credit card details.</ListItem>
+          </List>
+        </Section>
 
-            <Section>
-              <SectionTitle>3. How We Use Your Information</SectionTitle>
-              
-              <SubsectionTitle>3.1 Primary Functions</SubsectionTitle>
-              <List>
-                <ListItem><Strong>AI Summarization:</Strong> Video transcripts are sent to OpenAI's API to generate summaries</ListItem>
-                <ListItem><Strong>Chat Functionality:</Strong> Your questions and video context are processed to provide relevant answers</ListItem>
-                <ListItem><Strong>Account Management:</Strong> Your Google information is used for authentication and personalization</ListItem>
-                <ListItem><Strong>Service Delivery:</Strong> Usage data helps us maintain and improve the extension</ListItem>
-              </List>
+        <Section>
+          <SectionTitle>5. Data Security</SectionTitle>
+          <Paragraph>
+            We implement industry-standard security measures to protect your data, including encryption in transit (HTTPS/TLS) and secure storage protocols. However, no method of transmission over the internet is 100% secure, so we cannot guarantee absolute security.
+          </Paragraph>
+        </Section>
 
-              <SubsectionTitle>3.2 Service Improvement</SubsectionTitle>
-              <List>
-                <ListItem>Analyze usage patterns to enhance features</ListItem>
-                <ListItem>Debug technical issues and improve performance</ListItem>
-                <ListItem>Understand user preferences for better experiences</ListItem>
-              </List>
-            </Section>
+        <Section>
+          <SectionTitle>6. Your Rights</SectionTitle>
+          <Paragraph>
+            Depending on your location, you may have rights regarding your personal data, including:
+          </Paragraph>
+          <List>
+            <ListItem><strong>Access:</strong> You can request a copy of the personal data we hold about you.</ListItem>
+            <ListItem><strong>Deletion:</strong> You can request that we delete your account and associated data.</ListItem>
+            <ListItem><strong>Correction:</strong> You can update your personal information through your account settings.</ListItem>
+          </List>
+        </Section>
 
-            <Section>
-              <SectionTitle>4. Data Sharing and Third Parties</SectionTitle>
-              
-              <SubsectionTitle>4.1 OpenAI Processing</SubsectionTitle>
-              <Paragraph>
-                <Strong>Video transcripts and chat queries are sent to OpenAI</Strong> to generate AI-powered summaries and responses. 
-                This is essential for our service functionality. OpenAI processes this data according to their own privacy policy 
-                and does not use it to train their models when accessed via API.
-              </Paragraph>
+        <Section>
+          <SectionTitle>7. Changes to This Policy</SectionTitle>
+          <Paragraph>
+            We may update this privacy policy from time to time. We will notify you of any significant changes by posting the new policy on this page and updating the "Last Updated" date.
+          </Paragraph>
+        </Section>
 
-              <SubsectionTitle>4.2 Google Services</SubsectionTitle>
-              <Paragraph>
-                We use <Strong>Google OAuth</Strong> for secure authentication. Google processes your login according to their privacy policy.
-              </Paragraph>
+        <ContactSection>
+          <ContactTitle>Questions or Concerns?</ContactTitle>
+          <Paragraph style={{ marginBottom: '8px' }}>
+            If you have any questions about this Privacy Policy, please contact us at:
+          </Paragraph>
+          <EmailLink href="mailto:kunal@clicksummary.com">kunal@clicksummary.com</EmailLink>
+        </ContactSection>
 
-              <SubsectionTitle>4.3 No Data Selling</SubsectionTitle>
-              <Paragraph>
-                <Strong>We do not sell, rent, or trade your personal information</Strong> to any third parties for marketing or other purposes.
-              </Paragraph>
-            </Section>
-
-            <Section>
-              <SectionTitle>5. Data Storage and Security</SectionTitle>
-              
-              <SubsectionTitle>5.1 Local Storage</SubsectionTitle>
-              <List>
-                <ListItem>Authentication tokens are stored locally in your browser</ListItem>
-                <ListItem>Preferences and settings are saved on your device</ListItem>
-                <ListItem>No sensitive data is permanently stored on our servers</ListItem>
-              </List>
-
-              <SubsectionTitle>5.2 Security Measures</SubsectionTitle>
-              <List>
-                <ListItem><Strong>Encryption:</Strong> All data transmission uses HTTPS/TLS encryption</ListItem>
-                <ListItem><Strong>Secure APIs:</Strong> Authentication required for all backend requests</ListItem>
-                <ListItem><Strong>Limited Access:</Strong> Data is only processed for the stated purposes</ListItem>
-                <ListItem><Strong>No Persistent Storage:</Strong> Video content is processed in real-time, not stored</ListItem>
-              </List>
-            </Section>
-
-            <Section>
-              <SectionTitle>6. Data Retention</SectionTitle>
-              <Paragraph>
-                <Strong>Account Information:</Strong> Retained while your account is active and for a reasonable period after deletion.
-              </Paragraph>
-              <Paragraph>
-                <Strong>Usage Data:</Strong> Aggregated analytics may be retained for service improvement purposes.
-              </Paragraph>
-              <Paragraph>
-                <Strong>Video Content:</Strong> Transcripts are not permanently stored and are only processed temporarily for summarization.
-              </Paragraph>
-            </Section>
-
-            <Section>
-              <SectionTitle>7. Your Rights and Choices</SectionTitle>
-              
-              <SubsectionTitle>7.1 Account Control</SubsectionTitle>
-              <List>
-                <ListItem><Strong>Access:</Strong> View your account information in the extension</ListItem>
-                <ListItem><Strong>Deletion:</Strong> Sign out to remove local data; contact us to delete server-side data</ListItem>
-                <ListItem><Strong>Portability:</Strong> Request a copy of your data</ListItem>
-              </List>
-
-              <SubsectionTitle>7.2 Browser Controls</SubsectionTitle>
-              <List>
-                <ListItem>Uninstall the extension to stop all data collection</ListItem>
-                <ListItem>Revoke Google OAuth permissions in your Google Account settings</ListItem>
-                <ListItem>Clear browser storage to remove local data</ListItem>
-              </List>
-            </Section>
-
-            <Section>
-              <SectionTitle>8. Children's Privacy</SectionTitle>
-              <Paragraph>
-                ClickSummary is not intended for children under 13. We do not knowingly collect personal information from children under 13. 
-                If you become aware that a child has provided us with personal information, please contact us.
-              </Paragraph>
-            </Section>
-
-            <Section>
-              <SectionTitle>9. Changes to This Policy</SectionTitle>
-              <Paragraph>
-                We may update this privacy policy from time to time. We will notify you of any changes by posting the new privacy policy 
-                on this page and updating the "Last Updated" date. We encourage you to review this policy periodically.
-              </Paragraph>
-            </Section>
-
-            <Section>
-              <SectionTitle>10. Legal Compliance</SectionTitle>
-              <Paragraph>
-                This policy complies with applicable privacy laws including GDPR, CCPA, and Chrome Web Store requirements. 
-                We process data lawfully, fairly, and transparently.
-              </Paragraph>
-            </Section>
-
-            <ContactBox>
-              <ContactTitle>Questions About Privacy?</ContactTitle>
-              <Paragraph>
-                If you have any questions about this privacy policy or our data practices, please contact us at:
-              </Paragraph>
-              <ContactEmail href="mailto:kunal@clicksummary.com">
-                kunal@clicksummary.com
-              </ContactEmail>
-            </ContactBox>
-          </Content>
-        </ContentContainer>
-      </Container>
+      </ContentContainer>
+    </Container>
   );
 }
