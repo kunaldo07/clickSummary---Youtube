@@ -8,148 +8,69 @@ import { usePayment } from '../../hooks/usePayment';
 import toast from 'react-hot-toast';
 import { detectUserCountry, getPricingForCountry, formatPrice } from '../../utils/pricingConfig';
 
+// --- Styled Components ---
+
 const PageContainer = styled.div`
   min-height: 100vh;
   padding-top: 72px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  position: relative;
-  overflow: hidden;
+  background: #fff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 `;
 
-const BackgroundPattern = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="1.5" fill="rgba(255,255,255,0.05)"/><circle cx="40" cy="60" r="0.8" fill="rgba(255,255,255,0.08)"/><circle cx="70" cy="30" r="1.2" fill="rgba(255,255,255,0.06)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-  pointer-events: none;
-`;
-
-const FloatingElements = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 10%;
-    left: 10%;
-    width: 100px;
-    height: 100px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    animation: float1 6s ease-in-out infinite;
-  }
-  
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: 20%;
-    right: 15%;
-    width: 150px;
-    height: 150px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 50%;
-    animation: float2 8s ease-in-out infinite;
-  }
-  
-  @keyframes float1 {
-    0%, 100% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(-20px) rotate(10deg); }
-  }
-  
-  @keyframes float2 {
-    0%, 100% { transform: translateY(0px) rotate(0deg); }
-    50% { transform: translateY(15px) rotate(-10deg); }
-  }
-`;
-
-const HeroSection = styled.section`
-  padding: 80px 24px 60px;
+const HeaderSection = styled.section`
   text-align: center;
-  position: relative;
-  z-index: 1;
-`;
-
-const Container = styled.div`
-  max-width: 1200px;
+  padding: 80px 24px 60px;
+  max-width: 1000px;
   margin: 0 auto;
 `;
 
-const HeroTitle = styled(motion.h1)`
-  font-size: 3rem;
-  font-weight: 900;
-  color: white;
+const HeaderTitle = styled(motion.h1)`
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.1;
   margin-bottom: 24px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.02em;
 
   @media (max-width: 768px) {
     font-size: 2.5rem;
   }
 `;
 
-const HeroSubtitle = styled(motion.p)`
+const Highlight = styled.span`
+  color: #6366f1;
+`;
+
+const HeaderSubtitle = styled(motion.p)`
   font-size: 1.25rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: #6b7280;
   max-width: 600px;
-  margin: 0 auto 48px;
-  line-height: 1.6;
-
-  @media (max-width: 768px) {
-    font-size: 1.125rem;
-  }
-`;
-
-const PlansSection = styled.section`
-  padding: 0 24px 80px;
-  position: relative;
-  z-index: 1;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 2.5rem;
-  font-weight: 800;
-  text-align: center;
-  margin-bottom: 64px;
-  color: #1f2937;
-  
-  @media (max-width: 768px) {
-    font-size: 2rem;
-  }
-`;
-
-const PlansGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 32px;
-  max-width: 800px;
   margin: 0 auto;
+  line-height: 1.6;
+`;
 
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
+const PricingGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 32px;
+  max-width: 900px;
+  margin: 0 auto 100px;
+  padding: 0 24px;
 `;
 
 const PlanCard = styled(motion.div)`
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
+  background: white;
   border-radius: 24px;
   padding: 40px;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  border: 2px solid ${props => props.$popular ? '#8b5cf6' : 'rgba(255, 255, 255, 0.2)'};
+  border: 1px solid ${props => props.$popular ? '#6366f1' : '#e5e7eb'};
+  box-shadow: ${props => props.$popular ? '0 20px 40px -10px rgba(99, 102, 241, 0.15)' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)'};
   position: relative;
-  transform: ${props => props.$popular ? 'scale(1.05)' : 'scale(1)'};
-  
-  @media (max-width: 768px) {
-    transform: scale(1);
-    padding: 32px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease;
+
+  &:hover {
+    transform: translateY(-4px);
   }
 `;
 
@@ -158,51 +79,61 @@ const PopularBadge = styled.div`
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: #6366f1;
   color: white;
-  padding: 8px 24px;
+  padding: 6px 16px;
   border-radius: 20px;
   font-size: 0.875rem;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const PlanHeader = styled.div`
-  margin-bottom: 32px;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
 `;
 
 const PlanName = styled.h3`
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 16px;
-`;
-
-const PlanPrice = styled.div`
+  color: #111827;
   margin-bottom: 8px;
 `;
 
-const PriceAmount = styled.span`
-  font-size: ${props => props.$popular ? '3rem' : '2.5rem'};
-  font-weight: 900;
-  color: ${props => props.$popular ? '#8b5cf6' : '#1f2937'};
-  
-  @media (max-width: 768px) {
-    font-size: 2.5rem;
-  }
-`;
-
-const PricePeriod = styled.span`
-  font-size: 1rem;
+const PlanDescription = styled.p`
   color: #6b7280;
-  margin-left: 8px;
+  font-size: 0.95rem;
+  margin-bottom: 24px;
+  line-height: 1.5;
 `;
 
-const PlanFeatures = styled.ul`
+const PriceContainer = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 32px;
+`;
+
+const Currency = styled.span`
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #374151;
+`;
+
+const Amount = styled.span`
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+`;
+
+const Period = styled.span`
+  color: #6b7280;
+  font-size: 1rem;
+`;
+
+const FeatureList = styled.ul`
   list-style: none;
   padding: 0;
-  margin: 32px 0;
+  margin: 0 0 32px 0;
+  flex: 1;
 `;
 
 const FeatureItem = styled.li`
@@ -210,152 +141,93 @@ const FeatureItem = styled.li`
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
-  opacity: ${props => props.$disabled ? 0.5 : 1};
+  color: ${props => props.$disabled ? '#9ca3af' : '#374151'};
   
-  &:last-child {
-    margin-bottom: 0;
+  svg {
+    flex-shrink: 0;
+    color: ${props => props.$disabled ? '#d1d5db' : '#6366f1'};
   }
 `;
 
-const FeatureIcon = styled.span`
-  font-size: 1.25rem;
-  width: 24px;
-  text-align: center;
-`;
-
-const FeatureText = styled.span`
-  color: #374151;
-  font-size: 1rem;
-  text-decoration: ${props => props.$disabled ? 'line-through' : 'none'};
-`;
-
-const PlanButton = styled(motion.button)`
+const CTAButton = styled.button`
   width: 100%;
-  padding: 16px 32px;
-  font-size: 1.125rem;
-  font-weight: 700;
+  padding: 16px;
   border-radius: 12px;
-  border: none;
+  font-weight: 700;
+  font-size: 1rem;
   cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  transition: all 0.2s ease;
   
-  background: ${props => {
-    if (props.disabled) return '#e5e7eb';
-    if (props.$variant === 'premium') return 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)';
-    return 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)';
-  }};
-  
-  color: ${props => {
-    if (props.disabled) return '#9ca3af';
-    if (props.$variant === 'premium') return 'white';
-    return '#374151';
-  }};
-  
-  box-shadow: ${props => props.disabled ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.15)'};
-  
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  }
-  
+  ${props => props.$primary ? `
+    background: #6366f1;
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    
+    &:hover {
+      background: #4f46e5;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+    }
+  ` : `
+    background: white;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    
+    &:hover {
+      border-color: #d1d5db;
+      background: #f9fafb;
+    }
+  `}
+
   &:disabled {
+    opacity: 0.6;
     cursor: not-allowed;
   }
-  
-  span {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    justify-content: center;
-  }
 `;
 
-const GuaranteeBadge = styled.div`
-  margin-top: 20px;
+const ROIBanner = styled.div`
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  color: #166534;
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  color: #059669;
-  font-size: 0.875rem;
-  font-weight: 600;
-  
-  span:first-child {
-    font-size: 1rem;
-  }
+  line-height: 1.5;
 `;
 
-const ValueSection = styled.section`
-  padding: 60px 24px;
-  background: white;
-  position: relative;
-  z-index: 1;
+const FAQSection = styled.section`
+  background: #f9fafb;
+  padding: 100px 24px;
 `;
 
-const ValueGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 32px;
-  max-width: 1000px;
+const FAQGrid = styled.div`
+  max-width: 800px;
   margin: 0 auto;
+  display: grid;
+  gap: 24px;
 `;
 
-const ValueCard = styled(motion.div)`
-  text-align: center;
-  padding: 24px;
-`;
-
-const ValueIcon = styled.div`
-  font-size: 3rem;
-  margin-bottom: 16px;
-`;
-
-const ValueTitle = styled.h3`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 8px;
-`;
-
-const ValueDescription = styled.p`
-  color: #6b7280;
-  line-height: 1.6;
-  font-size: 0.95rem;
-`;
-
-const SavingsHighlight = styled.div`
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 700;
-  display: inline-block;
-  margin-top: 8px;
-`;
-
-const ROISection = styled.div`
-  background: rgba(139, 92, 246, 0.1);
+const FAQItem = styled.div`
+  background: white;
+  padding: 32px;
   border-radius: 16px;
-  padding: 24px;
-  margin-top: 24px;
-  border: 2px solid #8b5cf6;
+  border: 1px solid #e5e7eb;
 `;
 
-const ROITitle = styled.div`
-  font-size: 1rem;
+const FAQQuestion = styled.h3`
+  font-size: 1.1rem;
   font-weight: 700;
-  color: #7c3aed;
+  color: #111827;
   margin-bottom: 12px;
-  text-align: center;
 `;
 
-const ROIText = styled.div`
-  font-size: 0.9rem;
+const FAQAnswer = styled.p`
   color: #6b7280;
-  text-align: center;
   line-height: 1.6;
 `;
 
@@ -364,7 +236,6 @@ export default function PricingPageClient() {
   const { subscribeToPremium, loading } = usePayment();
   const [currentPlan, setCurrentPlan] = useState('free');
   const [pricing, setPricing] = useState(null);
-  const [countryCode, setCountryCode] = useState('IN');
   const [isLoadingPricing, setIsLoadingPricing] = useState(true);
 
   useEffect(() => {
@@ -378,12 +249,10 @@ export default function PricingPageClient() {
       try {
         setIsLoadingPricing(true);
         const detectedCountry = await detectUserCountry();
-        setCountryCode(detectedCountry);
         const pricingConfig = getPricingForCountry(detectedCountry);
         setPricing(pricingConfig);
       } catch (error) {
         console.error('Error loading pricing:', error);
-        // Fallback to default pricing
         const defaultPricing = getPricingForCountry('DEFAULT');
         setPricing(defaultPricing);
       } finally {
@@ -396,9 +265,9 @@ export default function PricingPageClient() {
   const handleSubscribeToPremium = async (planType = 'monthly') => {
     if (!isAuthenticated) {
       toast.error('Please sign in to subscribe');
+      // Redirect logic here if needed
       return;
     }
-
     const result = await subscribeToPremium(planType);
     if (result.success) {
       setCurrentPlan(planType);
@@ -406,282 +275,191 @@ export default function PricingPageClient() {
   };
 
   const handleSelectFreePlan = () => {
-    if (currentPlan === 'monthly') { // Simplified - only check for monthly
-      toast('You can downgrade to Free plan from your account settings', {
-        icon: 'ℹ️'
-      });
+    if (currentPlan === 'monthly') {
+      toast('You can manage your subscription in account settings', { icon: 'ℹ️' });
     } else {
-      toast.success('You are already on the Free plan!');
+      toast.success('You are already on the Free plan');
     }
   };
 
-  // Don't render plans until pricing is loaded
   if (isLoadingPricing || !pricing) {
     return (
       <PageContainer>
-        <BackgroundPattern />
-        <FloatingElements />
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: 'white', fontSize: '1.5rem' }}>
-          Loading pricing...
+        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ color: '#6b7280' }}>Loading pricing...</div>
         </div>
       </PageContainer>
     );
   }
 
-  // Simplified plans - only Free and Monthly (with dynamic pricing)
-  const plans = [
-    {
-      id: 'free',
-      name: 'Free Starter',
-      price: `${pricing.currency}0`,
-      period: 'forever',
-      description: 'Perfect for trying out ClickSummary',
-      features: [
-        { text: '5 summaries per day', enabled: true, value: `Worth ${formatPrice(pricing.freeValue.summaries, pricing.currency)}/month` },
-        { text: '1 AI chat per day', enabled: true, value: `Worth ${formatPrice(pricing.freeValue.chat, pricing.currency)}/month` },
-        { text: 'Basic video summaries', enabled: true },
-        { text: 'Standard processing time', enabled: true },
-        { text: 'Unlimited AI chat', enabled: false },
-        { text: 'Export & save summaries', enabled: false },
-        { text: 'Priority support', enabled: false },
-        { text: 'Custom summary formats', enabled: false }
-      ],
-      button: {
-        text: currentPlan === 'free' ? 'Current Plan' : 'Start Free',
-        variant: 'free',
-        disabled: currentPlan === 'free',
-        onClick: handleSelectFreePlan
-      }
-    },
-    {
-      id: 'monthly',
-      name: 'Premium Pro',
-      price: formatPrice(pricing.monthly, pricing.currency),
-      period: 'per month',
-      popular: true,
-      description: 'For serious learners & professionals',
-      savings: `Save 20+ hours/week = ${formatPrice(pricing.monthlyValue / 4, pricing.currency)}+ value`,
-      features: [
-        { text: 'Unlimited summaries', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.summaries, pricing.currency)}/month` },
-        { text: 'Unlimited AI chat', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.chat, pricing.currency)}/month` },
-        { text: 'All summary formats', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.formats, pricing.currency)}/month` },
-        { text: 'Export & save summaries', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.export, pricing.currency)}/month` },
-        { text: 'Priority processing', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.priority, pricing.currency)}/month` },
-        { text: 'Custom summary formats', enabled: true, value: `Worth ${formatPrice(pricing.premiumValue.custom, pricing.currency)}/month` },
-        { text: 'Priority email support', enabled: true },
-        { text: 'Early access to new features', enabled: true }
-      ],
-      button: {
-        text: currentPlan === 'monthly' ? 'Current Plan' : 'Start Premium Now',
-        variant: 'premium',
-        disabled: currentPlan === 'monthly',
-        onClick: () => handleSubscribeToPremium('monthly')
-      },
-      guarantee: true,
-      roi: true
-    }
-  ];
+  const CheckIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+  );
+
+  const XIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+  );
 
   return (
     <PageContainer>
-      <BackgroundPattern />
-      <FloatingElements />
+      <HeaderSection>
+        <HeaderTitle
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          Simple pricing, <Highlight>infinite value</Highlight>
+        </HeaderTitle>
+        <HeaderSubtitle
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          Start for free. Upgrade when you're ready to unlock unlimited AI power.
+          Cancel anytime, no questions asked.
+        </HeaderSubtitle>
+      </HeaderSection>
 
-      <HeroSection>
-        <Container>
-          <HeroTitle
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+      <PricingGrid>
+        {/* Free Plan */}
+        <PlanCard
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <PlanName>Free Starter</PlanName>
+          <PlanDescription>Perfect for trying out ClickSummary</PlanDescription>
+          <PriceContainer>
+            <Amount>{pricing.currency}0</Amount>
+            <Period>/ month</Period>
+          </PriceContainer>
+
+          <FeatureList>
+            <FeatureItem>
+              <CheckIcon />
+              <span>5 video summaries per day</span>
+            </FeatureItem>
+            <FeatureItem>
+              <CheckIcon />
+              <span>1 AI chat query per day</span>
+            </FeatureItem>
+            <FeatureItem>
+              <CheckIcon />
+              <span>Standard processing speed</span>
+            </FeatureItem>
+            <FeatureItem $disabled>
+              <XIcon />
+              <span>Unlimited summaries</span>
+            </FeatureItem>
+            <FeatureItem $disabled>
+              <XIcon />
+              <span>Transcript search</span>
+            </FeatureItem>
+          </FeatureList>
+
+          <CTAButton 
+            onClick={handleSelectFreePlan}
+            disabled={currentPlan === 'free'}
           >
-            Invest {formatPrice(pricing.monthly, pricing.currency)}/month, Save 20+ Hours Every Week
-          </HeroTitle>
-          <HeroSubtitle
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            {currentPlan === 'free' ? 'Current Plan' : 'Start for Free'}
+          </CTAButton>
+        </PlanCard>
+
+        {/* Premium Plan */}
+        <PlanCard
+          $popular
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <PopularBadge>Most Popular</PopularBadge>
+          <PlanName>Premium Pro</PlanName>
+          <PlanDescription>For power users who want to learn faster</PlanDescription>
+          
+          <PriceContainer>
+            <Currency>{pricing.currency}</Currency>
+            <Amount>{pricing.monthly}</Amount>
+            <Period>/ month</Period>
+          </PriceContainer>
+
+          <ROIBanner>
+            <span>💰</span>
+            <span>
+              <strong>Smart Investment:</strong> Save 20+ hours/week. That's less than {pricing.currency}1 per hour saved!
+            </span>
+          </ROIBanner>
+
+          <FeatureList>
+            <FeatureItem>
+              <CheckIcon />
+              <span><strong>Unlimited</strong> summaries</span>
+            </FeatureItem>
+            <FeatureItem>
+              <CheckIcon />
+              <span><strong>Unlimited</strong> AI chat</span>
+            </FeatureItem>
+            <FeatureItem>
+              <CheckIcon />
+              <span><strong>Priority</strong> processing speed</span>
+            </FeatureItem>
+            <FeatureItem>
+              <CheckIcon />
+              <span>Transcript Search & Export</span>
+            </FeatureItem>
+            <FeatureItem>
+              <CheckIcon />
+              <span>Early access to new features</span>
+            </FeatureItem>
+          </FeatureList>
+
+          <CTAButton 
+            $primary 
+            onClick={() => handleSubscribeToPremium('monthly')}
+            disabled={currentPlan === 'monthly' || loading}
           >
-            That's less than {formatPrice(Math.ceil(pricing.monthly / 30), pricing.currency)}/day to reclaim your time. Join 10,000+ users who've transformed how they learn.
-          </HeroSubtitle>
-        </Container>
-      </HeroSection>
-
-      <PlansSection>
-        <Container>
-          <PlansGrid>
-            {plans.map((plan, index) => (
-              <PlanCard
-                key={plan.id}
-                $popular={plan.popular}
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
-              >
-                {plan.popular && <PopularBadge>Most Popular</PopularBadge>}
-                
-                <PlanHeader>
-                  <PlanName>{plan.name}</PlanName>
-                  {plan.description && (
-                    <div style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '16px' }}>
-                      {plan.description}
-                    </div>
-                  )}
-                  <PlanPrice>
-                    <PriceAmount $popular={plan.popular}>{plan.price}</PriceAmount>
-                    <PricePeriod>{plan.period}</PricePeriod>
-                  </PlanPrice>
-                  {plan.savings && (
-                    <SavingsHighlight>{plan.savings}</SavingsHighlight>
-                  )}
-                </PlanHeader>
-
-                <PlanFeatures>
-                  {plan.features.map((feature, featureIndex) => (
-                    <FeatureItem key={featureIndex} $disabled={!feature.enabled}>
-                      <FeatureIcon>{feature.enabled ? '✅' : '❌'}</FeatureIcon>
-                      <div style={{ flex: 1, textAlign: 'left' }}>
-                        <FeatureText $disabled={!feature.enabled}>{feature.text}</FeatureText>
-                        {feature.value && feature.enabled && (
-                          <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: '600', marginTop: '2px' }}>
-                            {feature.value}
-                          </div>
-                        )}
-                      </div>
-                    </FeatureItem>
-                  ))}
-                </PlanFeatures>
-
-                {plan.roi && (
-                  <ROISection>
-                    <ROITitle>💰 Return on Investment</ROITitle>
-                    <ROIText>
-                      If your time is worth {formatPrice(pricing.hourlyValue, pricing.currency)}/hour, saving 20 hours/week = {formatPrice(pricing.monthlyValue, pricing.currency)}/month value.
-                      <br />
-                      <strong style={{ color: '#7c3aed', fontSize: '1.1rem' }}>That's {pricing.roi} ROI!</strong>
-                    </ROIText>
-                  </ROISection>
-                )}
-
-                <PlanButton
-                  $variant={plan.button.variant}
-                  $loading={loading && plan.id === 'monthly'}
-                  disabled={plan.button.disabled || (loading && plan.id === 'monthly')}
-                  onClick={plan.button.onClick}
-                  whileHover={{ scale: plan.button.disabled ? 1 : 1.02 }}
-                  whileTap={{ scale: plan.button.disabled ? 1 : 0.98 }}
-                >
-                  {loading && plan.id === 'monthly' ? (
-                    <span>Processing...</span>
-                  ) : (
-                    <>
-                      <span>{plan.button.text}</span>
-                      {plan.id === 'monthly' && !plan.button.disabled && <span>🚀</span>}
-                    </>
-                  )}
-                </PlanButton>
-
-                {plan.guarantee && (
-                  <GuaranteeBadge>
-                    <span>💰</span>
-                    <span>7-day money-back guarantee</span>
-                  </GuaranteeBadge>
-                )}
-              </PlanCard>
-            ))}
-          </PlansGrid>
-        </Container>
-      </PlansSection>
-
-      <ValueSection>
-        <Container>
-          <SectionTitle style={{ color: '#1f2937', marginBottom: '48px' }}>Why Premium Users Love ClickSummary</SectionTitle>
-          <ValueGrid>
-            <ValueCard
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-            >
-              <ValueIcon>⏰</ValueIcon>
-              <ValueTitle>Save 20+ Hours Weekly</ValueTitle>
-              <ValueDescription>
-                Stop watching hour-long videos. Get the key insights in seconds and use your time for what matters.
-              </ValueDescription>
-            </ValueCard>
-
-            <ValueCard
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <ValueIcon>🧠</ValueIcon>
-              <ValueTitle>Learn 10x Faster</ValueTitle>
-              <ValueDescription>
-                Consume more content, retain more information, and accelerate your learning journey exponentially.
-              </ValueDescription>
-            </ValueCard>
-
-            <ValueCard
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <ValueIcon>💼</ValueIcon>
-              <ValueTitle>Stay Ahead Professionally</ValueTitle>
-              <ValueDescription>
-                Keep up with industry trends, competitor analysis, and professional development effortlessly.
-              </ValueDescription>
-            </ValueCard>
-
-            <ValueCard
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
-              <ValueIcon>🎯</ValueIcon>
-              <ValueTitle>Zero Risk Guarantee</ValueTitle>
-              <ValueDescription>
-                Try Premium risk-free for 7 days. Not satisfied? Get a full refund, no questions asked.
-              </ValueDescription>
-            </ValueCard>
-          </ValueGrid>
-
-          <div style={{ textAlign: 'center', marginTop: '64px' }}>
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                padding: '48px',
-                borderRadius: '24px',
-                maxWidth: '700px',
-                margin: '0 auto'
-              }}
-            >
-              <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>🚀</div>
-              <h3 style={{ fontSize: '1.75rem', fontWeight: '800', marginBottom: '16px' }}>
-                Limited Time Offer: 50% Off First Month
-              </h3>
-              <p style={{ fontSize: '1.1rem', opacity: '0.95', marginBottom: '24px' }}>
-                Join in the next 24 hours and get Premium for just {formatPrice(pricing.discountedMonthly, pricing.currency)} for your first month.
-                <br />
-                <strong>Only 23 spots remaining!</strong>
-              </p>
-              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', fontSize: '0.9rem', opacity: '0.9' }}>
-                <span>✓ Cancel Anytime</span>
-                <span>✓ 7-Day Money Back</span>
-                <span>✓ Instant Access</span>
-              </div>
-            </motion.div>
+            {loading ? 'Processing...' : (currentPlan === 'monthly' ? 'Current Plan' : 'Upgrade to Pro')}
+          </CTAButton>
+          
+          <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '0.85rem', color: '#6b7280' }}>
+            7-day money-back guarantee • Cancel anytime
           </div>
-        </Container>
-      </ValueSection>
+        </PlanCard>
+      </PricingGrid>
+
+      <FAQSection>
+        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+          <h2 style={{ fontSize: '2rem', fontWeight: '800', color: '#111827', marginBottom: '16px' }}>
+            Frequently Asked Questions
+          </h2>
+          <p style={{ color: '#6b7280' }}>Everything you need to know about pricing and billing.</p>
+        </div>
+        
+        <FAQGrid>
+          <FAQItem>
+            <FAQQuestion>Can I cancel my subscription?</FAQQuestion>
+            <FAQAnswer>
+              Yes, you can cancel anytime from your account settings. You'll keep access to Premium features until the end of your billing period.
+            </FAQAnswer>
+          </FAQItem>
+          <FAQItem>
+            <FAQQuestion>How does the 7-day guarantee work?</FAQQuestion>
+            <FAQAnswer>
+              If you're not 100% satisfied with ClickSummary Premium within the first 7 days, just email us and we'll refund your full payment immediately. No questions asked.
+            </FAQAnswer>
+          </FAQItem>
+          <FAQItem>
+            <FAQQuestion>Do you offer student discounts?</FAQQuestion>
+            <FAQAnswer>
+              Yes! We offer 50% off for students with a valid .edu email address. Contact support to get your discount code.
+            </FAQAnswer>
+          </FAQItem>
+        </FAQGrid>
+      </FAQSection>
     </PageContainer>
   );
 }
