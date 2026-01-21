@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ClickSummary</title>
+  <title>AI Youtube Summarizer</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
     <header class="app-header">
       <div class="brand">
         <span class="brand-icon">✨</span>
-        <span class="brand-name">ClickSummary</span>
+        <span class="brand-name">AI Youtube Summarizer</span>
       </div>
       <div id="connection-status" class="connection-indicator connected" title="Connected to backend">
         <span class="indicator-dot"></span>
@@ -32,7 +32,7 @@
     <div id="not-authenticated-view" class="view hidden">
       <div class="auth-hero">
         <div class="hero-icon">🔐</div>
-        <h2>Welcome to ClickSummary</h2>
+        <h2>Welcome to AI Youtube Summarizer</h2>
         <p>Sign in to unlock AI-powered summaries and chat for any YouTube video.</p>
         
         <button id="sign-in-btn" class="btn btn-primary btn-lg">
@@ -90,14 +90,14 @@
       <div class="section usage-section">
         <div class="section-header">
           <h4>Your Usage</h4>
-          <span id="plan-expiry" class="expiry-text">Resets daily</span>
+          <span id="plan-expiry" class="expiry-text">Resets monthly</span>
         </div>
         
         <!-- Summaries Usage -->
         <div class="usage-item">
           <div class="usage-label">
-            <span>Daily Summaries</span>
-            <span id="summaries-count" class="usage-value">0/3</span>
+            <span>Monthly Summaries</span>
+            <span id="summaries-count" class="usage-value">0/50</span>
           </div>
           <div class="progress-bar">
             <div id="summaries-progress" class="progress-fill" style="width: 0%"></div>
@@ -108,7 +108,7 @@
         <div class="usage-item">
           <div class="usage-label">
             <span>Monthly Chat</span>
-            <span id="chat-count" class="usage-value">0/5</span>
+            <span id="chat-count" class="usage-value">0/3</span>
           </div>
           <div class="progress-bar">
             <div id="chat-progress" class="progress-fill" style="width: 0%"></div>

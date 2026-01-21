@@ -56,13 +56,8 @@ const userSchema = new mongoose.Schema({
     chatQueriesThisMonth: { type: Number, default: 0 },
     costThisMonth: { type: Number, default: 0 },
     lastResetDate: { type: Date, default: Date.now },
-    // Daily usage tracking for limits (YouTube)
-    summariesToday: { type: Number, default: 0 },
-    chatQueriesToday: { type: Number, default: 0 },
-    lastDailyReset: { type: Date, default: Date.now },
-    // Monthly chat tracking (30-day cycles from account creation) (YouTube)
-    chatQueriesThisCycle: { type: Number, default: 0 },
-    chatRenewalDate: { type: Date, default: null },
+    // YouTube usage tracking (monthly cycles)
+    youtubeRenewalDate: { type: Date, default: null },
     // Reddit usage tracking (monthly cycles from account creation)
     redditSummariesThisCycle: { type: Number, default: 0 },
     redditChatsThisCycle: { type: Number, default: 0 },
@@ -130,19 +125,21 @@ userSchema.methods.resetMonthlyUsage = function() {
   return false;
 };
 
-// Method to reset daily usage
-userSchema.methods.resetDailyUsage = function() {
+// Method to reset YouTube usage (monthly cycles from account creation)
+userSchema.methods.resetYouTubeUsage = function() {
   const now = new Date();
-  const lastReset = this.usage.lastDailyReset;
   
-  // Check if it's a new day (compare dates only, not time)
-  const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const resetDate = new Date(lastReset.getFullYear(), lastReset.getMonth(), lastReset.getDate());
+  // Initialize youtubeRenewalDate if not set (for existing users)
+  if (!this.usage.youtubeRenewalDate) {
+    this.usage.youtubeRenewalDate = new Date(this.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+  }
   
-  if (nowDate.getTime() !== resetDate.getTime()) {
-    this.usage.summariesToday = 0;
-    this.usage.chatQueriesToday = 0;
-    this.usage.lastDailyReset = now;
+  // Check if renewal date has passed
+  if (now >= this.usage.youtubeRenewalDate) {
+    this.usage.summariesThisMonth = 0;
+    this.usage.chatQueriesThisMonth = 0;
+    // Set next renewal date (30 days from now)
+    this.usage.youtubeRenewalDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     return true;
   }
   return false;
@@ -159,22 +156,22 @@ userSchema.methods.canUsePremiumFeatures = function() {
   return this.hasActiveSubscription;
 };
 
-// Get daily limits based on subscription plan
-userSchema.methods.getDailyLimits = function() {
+// Get monthly limits based on subscription plan
+userSchema.methods.getMonthlyLimits = function() {
   // Only paid plans (monthly) get unlimited access, not trial users
   const isPaid = this.subscription.planType === 'monthly' && this.hasActiveSubscription;
   
   return {
-    summaries: isPaid ? -1 : 3, // -1 means unlimited, free users get 3/day
-    chatQueries: isPaid ? -1 : 5 // For paid users unlimited, free users get 5/month (checked separately)
+    summaries: isPaid ? -1 : 50, // -1 means unlimited, free users get 50/month
+    chatQueries: isPaid ? -1 : 3 // For paid users unlimited, free users get 3/month
   };
 };
 
 // Check if user can create a summary
 userSchema.methods.canCreateSummary = function() {
-  this.resetDailyUsage(); // Auto-reset if new day
+  this.resetYouTubeUsage(); // Auto-reset if 30-day cycle passed
   
-  const limits = this.getDailyLimits();
+  const limits = this.getMonthlyLimits();
   
   // Unlimited for paid users
   if (limits.summaries === -1) {
@@ -182,37 +179,20 @@ userSchema.methods.canCreateSummary = function() {
   }
   
   // Check free user limits
-  const remaining = limits.summaries - this.usage.summariesToday;
+  const remaining = limits.summaries - this.usage.summariesThisMonth;
   return {
     allowed: remaining > 0,
     remaining: Math.max(0, remaining),
     limit: limits.summaries,
-    used: this.usage.summariesToday
+    used: this.usage.summariesThisMonth,
+    renewalDate: this.usage.youtubeRenewalDate
   };
 };
 
-// Method to reset monthly chat usage (30-day cycles from account creation)
-userSchema.methods.resetMonthlyChatUsage = function() {
-  const now = new Date();
-  
-  // Initialize chatRenewalDate if not set (for existing users)
-  if (!this.usage.chatRenewalDate) {
-    this.usage.chatRenewalDate = new Date(this.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
-  }
-  
-  // Check if renewal date has passed
-  if (now >= this.usage.chatRenewalDate) {
-    this.usage.chatQueriesThisCycle = 0;
-    // Set next renewal date (30 days from now)
-    this.usage.chatRenewalDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    return true;
-  }
-  return false;
-};
 
 // Check if user can use chat feature
 userSchema.methods.canUseChat = function() {
-  this.resetMonthlyChatUsage(); // Auto-reset if 30-day cycle passed
+  this.resetYouTubeUsage(); // Auto-reset if 30-day cycle passed
   
   // Only paid plans (monthly) get unlimited access, not trial users
   const isPaid = this.subscription.planType === 'monthly' && this.hasActiveSubscription;
@@ -222,31 +202,27 @@ userSchema.methods.canUseChat = function() {
     return { allowed: true, remaining: -1 };
   }
   
-  // Check free user monthly limits (5 chats per 30-day cycle)
-  const limit = 5;
-  const remaining = limit - this.usage.chatQueriesThisCycle;
+  // Check free user monthly limits (3 chats per 30-day cycle)
+  const limit = 3;
+  const remaining = limit - this.usage.chatQueriesThisMonth;
   return {
     allowed: remaining > 0,
     remaining: Math.max(0, remaining),
     limit: limit,
-    used: this.usage.chatQueriesThisCycle,
-    renewalDate: this.usage.chatRenewalDate
+    used: this.usage.chatQueriesThisMonth,
+    renewalDate: this.usage.youtubeRenewalDate
   };
 };
 
 // Method to increment usage
 userSchema.methods.incrementUsage = function(type, cost = 0) {
-  this.resetMonthlyUsage(); // Auto-reset if new month
-  this.resetDailyUsage(); // Auto-reset if new day
-  this.resetMonthlyChatUsage(); // Auto-reset if 30-day cycle passed
+  this.resetMonthlyUsage(); // Auto-reset if new month (for cost tracking)
+  this.resetYouTubeUsage(); // Auto-reset if 30-day cycle passed
   
   if (type === 'summary') {
     this.usage.summariesThisMonth += 1;
-    this.usage.summariesToday += 1;
   } else if (type === 'chat') {
     this.usage.chatQueriesThisMonth += 1;
-    this.usage.chatQueriesToday += 1;
-    this.usage.chatQueriesThisCycle += 1; // Track monthly cycle usage
   }
   
   this.usage.costThisMonth += cost;

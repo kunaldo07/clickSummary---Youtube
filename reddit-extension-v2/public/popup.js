@@ -144,20 +144,29 @@ async function loadUsageData() {
 // Check authentication
 async function checkAuthentication() {
   try {
+    console.log('🔍 Checking authentication in popup...');
     const result = await chrome.storage.local.get(['youtube_summarizer_token', 'youtube_summarizer_user']);
     
+    console.log('📦 Storage result:', {
+      hasToken: !!result.youtube_summarizer_token,
+      hasUser: !!result.youtube_summarizer_user,
+      tokenPreview: result.youtube_summarizer_token?.substring(0, 30)
+    });
+    
     if (!result.youtube_summarizer_token || !result.youtube_summarizer_user) {
+      console.log('❌ No auth data found in storage');
       return null;
     }
     
     const user = JSON.parse(result.youtube_summarizer_user);
+    console.log('✅ Auth data found for user:', user.email || user.name);
     
     return {
       token: result.youtube_summarizer_token,
       user: user
     };
   } catch (error) {
-    console.error('Error checking authentication:', error);
+    console.error('❌ Error checking authentication:', error);
     return null;
   }
 }
@@ -178,6 +187,13 @@ async function fetchUsageFromBackend(token) {
   
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    
+    // If token is invalid/expired, clear storage and show sign-in view
+    if (response.status === 401) {
+      await chrome.storage.local.remove(['youtube_summarizer_token', 'youtube_summarizer_user']);
+      throw new Error('Session expired. Please visit clicksummary.com to sign in again.');
+    }
+    
     throw new Error(errorData.error || 'Failed to fetch usage data');
   }
   

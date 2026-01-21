@@ -542,22 +542,21 @@ async function fetchAndDisplayUsage(token, summariesElement, planType) {
       }
     }
 
-    // Update chat renewal hint
-    const chatRenewalHint = document.getElementById('chat-renewal');
-    if (planType === 'free' && usageData.usage.chat.renewalDate) {
-      const renewalDate = new Date(usageData.usage.chat.renewalDate);
+    // Update plan expiry with renewal date
+    if (planType === 'free' && usageData.renewalDate) {
+      const renewalDate = new Date(usageData.renewalDate);
       const now = new Date();
       const daysUntilRenewal = Math.ceil((renewalDate - now) / (1000 * 60 * 60 * 24));
       
       if (daysUntilRenewal > 0) {
-        chatRenewalHint.textContent = `Renews in ${daysUntilRenewal} day${daysUntilRenewal === 1 ? '' : 's'}`;
+        planExpiry.textContent = `Resets in ${daysUntilRenewal} day${daysUntilRenewal === 1 ? '' : 's'}`;
       } else {
-        chatRenewalHint.textContent = 'Renews today';
+        planExpiry.textContent = 'Resets today';
       }
-    } else if (usageData.limits.chatQueries === -1) {
-      chatRenewalHint.textContent = 'Unlimited';
+    } else if (usageData.limits.summaries === -1) {
+      planExpiry.textContent = 'Unlimited';
     } else {
-      chatRenewalHint.textContent = 'Renews in 30 days';
+      planExpiry.textContent = 'Resets monthly';
     }
 
     // Show upgrade button if user has reached limits

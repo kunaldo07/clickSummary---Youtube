@@ -9,7 +9,9 @@
   ],
   "host_permissions": [
     "https://www.reddit.com/*",
-    "https://old.reddit.com/*"
+    "https://old.reddit.com/*",
+    "https://clicksummary.com/*",
+    "https://www.clicksummary.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -34,6 +36,7 @@
     },
     {
       "matches": [
+        "https://clicksummary.com/*",
         "https://www.clicksummary.com/*",
         "http://localhost:3002/*"
       ],

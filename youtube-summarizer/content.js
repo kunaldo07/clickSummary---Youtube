@@ -18,6 +18,9 @@ class YouTubeSummarizer {
     this.transcriptSearchTerm = '';
     this.autoScrollEnabled = true;
     this.transcriptSyncInterval = null;
+    this.containerMonitoringInterval = null;
+    this.reinjectionAttempts = 0;
+    this.maxReinjectionAttempts = 10;
     this.init();
   }
 
@@ -31,34 +34,81 @@ class YouTubeSummarizer {
   }
 
   startMonitoring() {
-    // Monitor for URL changes (YouTube is a SPA)
+    console.log('👁️ Starting YouTube navigation monitoring...');
+    
+    // Strategy 1: MutationObserver for DOM changes
     let lastUrl = location.href;
-    new MutationObserver(() => {
+    const observer = new MutationObserver(() => {
       const url = location.href;
       if (url !== lastUrl) {
+        console.log('🔍 MutationObserver detected URL change');
         lastUrl = url;
         this.onPageChange();
       }
-    }).observe(document, { subtree: true, childList: true });
+    });
+    observer.observe(document, { subtree: true, childList: true });
+
+    // Strategy 2: Listen to popstate event (browser back/forward)
+    window.addEventListener('popstate', () => {
+      console.log('🔍 popstate event detected');
+      this.onPageChange();
+    });
+
+    // Strategy 3: Override history.pushState and replaceState
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    
+    history.pushState = function(...args) {
+      originalPushState.apply(this, args);
+      console.log('🔍 history.pushState detected');
+      window.dispatchEvent(new Event('pushstate'));
+    };
+    
+    history.replaceState = function(...args) {
+      originalReplaceState.apply(this, args);
+      console.log('🔍 history.replaceState detected');
+      window.dispatchEvent(new Event('replacestate'));
+    };
+    
+    window.addEventListener('pushstate', () => this.onPageChange());
+    window.addEventListener('replacestate', () => this.onPageChange());
+
+    // Strategy 4: Polling as fallback (check every 1 second)
+    setInterval(() => {
+      const currentUrl = location.href;
+      const currentVideoId = this.getVideoId();
+      
+      if (currentVideoId && currentVideoId !== this.currentVideoId) {
+        console.log('🔍 Polling detected video change');
+        this.onPageChange();
+      }
+    }, 1000);
 
     // Handle initial page load
     this.onPageChange();
+    
+    console.log('✅ Navigation monitoring started with multiple strategies');
   }
 
   onPageChange() {
-    const videoId = this.getVideoId();
-    if (videoId && videoId !== this.currentVideoId) {
-      console.log(`🔄 Video changed from ${this.currentVideoId} to ${videoId}`);
-      console.log(`💬 Clearing chat history (${this.chatHistory.length} messages) for new video`);
-      
-      // Clear cache for previous video if it exists
-      if (this.currentVideoId) {
-        this.clearVideoCache(this.currentVideoId);
+    try {
+      const videoId = this.getVideoId();
+      if (videoId && videoId !== this.currentVideoId) {
+        console.log(`🔄 Video changed from ${this.currentVideoId} to ${videoId}`);
+        console.log(`💬 Clearing chat history (${this.chatHistory.length} messages) for new video`);
+        
+        // Clear cache for previous video if it exists
+        if (this.currentVideoId) {
+          this.clearVideoCache(this.currentVideoId);
+        }
+        
+        this.currentVideoId = videoId;
+        this.removePreviousSummary(); // This clears chat history
+        setTimeout(() => this.procesVideo(), 2000); // Wait for YouTube to load
       }
-      
-      this.currentVideoId = videoId;
-      this.removePreviousSummary(); // This clears chat history
-      setTimeout(() => this.procesVideo(), 2000); // Wait for YouTube to load
+    } catch (error) {
+      console.error('⚠️ Error in onPageChange:', error.message);
+      // Don't let errors break navigation detection
     }
   }
 
@@ -68,10 +118,18 @@ class YouTubeSummarizer {
   }
 
   async procesVideo() {
-    if (this.isProcessing) return;
+    console.log('🎬 procesVideo called for video:', this.currentVideoId);
+    
+    if (this.isProcessing) {
+      console.log('⚠️ Already processing, skipping...');
+      return;
+    }
+    
     this.isProcessing = true;
+    console.log('✅ Starting video processing...');
 
     try {
+      console.log('📦 Creating summary container...');
       this.createSummaryContainer();
 
       // Extract both transcript and comments in parallel
@@ -1089,14 +1147,24 @@ class YouTubeSummarizer {
   }
 
   createSummaryContainer() {
-    if (this.summaryContainer) return;
+    console.log('📦 createSummaryContainer called');
+    
+    if (this.summaryContainer) {
+      console.log('⚠️ Container already exists, skipping creation');
+      return;
+    }
 
     // Find the video secondary info (below video)
     const secondaryInfo = document.querySelector('#secondary-inner') || 
                          document.querySelector('#secondary') ||
                          document.querySelector('#columns #secondary');
     
-    if (!secondaryInfo) return;
+    if (!secondaryInfo) {
+      console.log('❌ Could not find secondary info container');
+      return;
+    }
+    
+    console.log('✅ Found secondary info container, creating summary container...');
 
     this.summaryContainer = document.createElement('div');
     this.summaryContainer.id = 'youtube-summarizer-container';
@@ -1229,6 +1297,62 @@ class YouTubeSummarizer {
     secondaryInfo.insertBefore(this.summaryContainer, secondaryInfo.firstChild);
 
     this.attachEventListeners();
+    
+    // Start monitoring for container removal
+    this.startContainerMonitoring();
+  }
+
+  startContainerMonitoring() {
+    // Stop any existing monitoring
+    if (this.containerMonitoringInterval) {
+      clearInterval(this.containerMonitoringInterval);
+    }
+    
+    this.reinjectionAttempts = 0;
+    
+    // Check every 500ms if container is still in DOM
+    this.containerMonitoringInterval = setInterval(() => {
+      if (!this.summaryContainer) {
+        clearInterval(this.containerMonitoringInterval);
+        return;
+      }
+      
+      const stillExists = document.body.contains(this.summaryContainer);
+      
+      if (!stillExists && this.reinjectionAttempts < this.maxReinjectionAttempts) {
+        this.reinjectionAttempts++;
+        console.warn(`⚠️ Summary container removed from DOM! Re-injecting (attempt ${this.reinjectionAttempts}/${this.maxReinjectionAttempts})...`);
+        
+        // Reset container reference
+        this.summaryContainer = null;
+        
+        // Wait for YouTube to finish its DOM updates
+        setTimeout(() => {
+          const currentVideoId = this.getVideoId();
+          if (currentVideoId === this.currentVideoId) {
+            this.createSummaryContainer();
+            
+            // Restore the current view state
+            if (this.showingTranscript) {
+              this.displayTranscript();
+            } else if (this.showingChat) {
+              this.displayChat();
+            } else {
+              this.updateSummaryDisplay();
+            }
+          }
+        }, 300);
+      }
+      
+      // Stop checking after video changes or max attempts
+      const currentVideoId = this.getVideoId();
+      if (currentVideoId !== this.currentVideoId || this.reinjectionAttempts >= this.maxReinjectionAttempts) {
+        clearInterval(this.containerMonitoringInterval);
+        this.containerMonitoringInterval = null;
+      }
+    }, 500);
+    
+    console.log('👁️ Started container monitoring');
   }
 
   attachEventListeners() {
@@ -2646,6 +2770,14 @@ ${content}
   }
 
   removePreviousSummary() {
+    console.log('🧹 Cleaning up previous summary...');
+    
+    // Stop monitoring
+    if (this.containerMonitoringInterval) {
+      clearInterval(this.containerMonitoringInterval);
+      this.containerMonitoringInterval = null;
+    }
+    
     if (this.summaryContainer) {
       this.summaryContainer.remove();
       this.summaryContainer = null;
@@ -2655,21 +2787,34 @@ ${content}
     this.chatHistory = []; // Clear chat history when switching videos
     this.transcriptData = null; // Clear old transcript data
     this.summaries = {}; // Clear internal cache
+    this.reinjectionAttempts = 0;
+    console.log('🧹 Cleanup complete');
   }
   
   // Clear cache for specific video
   clearVideoCache(videoId) {
     console.log(`🗑️ Clearing cache for video: ${videoId}`);
-    chrome.runtime.sendMessage({
-      action: 'clearVideoCache',
-      videoId: videoId
-    }, (response) => {
-      if (response && response.success) {
-        console.log(`✅ Cache cleared for video: ${videoId}`);
-      } else {
-        console.log(`⚠️ Failed to clear cache for video: ${videoId}`);
-      }
-    });
+    
+    try {
+      chrome.runtime.sendMessage({
+        action: 'clearVideoCache',
+        videoId: videoId
+      }, (response) => {
+        // Check for extension context invalidation
+        if (chrome.runtime.lastError) {
+          console.log('⚠️ Extension context invalidated, skipping cache clear');
+          return;
+        }
+        
+        if (response && response.success) {
+          console.log(`✅ Cache cleared for video: ${videoId}`);
+        } else {
+          console.log(`⚠️ Failed to clear cache for video: ${videoId}`);
+        }
+      });
+    } catch (error) {
+      console.log('⚠️ Could not clear cache (extension context invalidated)');
+    }
   }
 
   // Authentication Methods

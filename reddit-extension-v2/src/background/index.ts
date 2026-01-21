@@ -138,6 +138,13 @@ async function handleAnalyzeThread(data: any, tabId?: number): Promise<ThreadSum
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     
+    // Handle authentication errors
+    if (response.status === 401) {
+      // Clear expired token
+      await chrome.storage.local.remove(['youtube_summarizer_token', 'youtube_summarizer_user']);
+      throw new Error('Session expired. Please visit clicksummary.com and sign in again, then refresh this page.');
+    }
+    
     // Handle usage limit errors
     if (response.status === 429) {
       if (errorData.error === 'MONTHLY_REDDIT_SUMMARY_LIMIT_EXCEEDED') {
@@ -225,6 +232,13 @@ async function handleChatWithThread(data: any, tabId?: number): Promise<string> 
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    
+    // Handle authentication errors
+    if (response.status === 401) {
+      // Clear expired token
+      await chrome.storage.local.remove(['youtube_summarizer_token', 'youtube_summarizer_user']);
+      throw new Error('Session expired. Please visit clicksummary.com and sign in again, then refresh this page.');
+    }
     
     // Handle usage limit errors
     if (response.status === 429) {

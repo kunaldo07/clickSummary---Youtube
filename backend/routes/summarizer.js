@@ -83,20 +83,20 @@ router.post('/summarize', auth, requireActiveSubscription, checkCostLimit, async
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Reset daily usage if it's a new day (and save immediately)
-    const wasReset = user.resetDailyUsage();
+    // Reset YouTube usage if it's a new month (and save immediately)
+    const wasReset = user.resetYouTubeUsage();
     if (wasReset) {
-      console.log(`🔄 Daily usage reset for user ${userId} at midnight`);
+      console.log(`🔄 YouTube usage reset for user ${userId}`);
       await user.save();
     }
 
     // Check if user can create a summary (after potential reset)
     const summaryCheck = user.canCreateSummary();
     if (!summaryCheck.allowed) {
-      const limits = user.getDailyLimits();
+      const limits = user.getMonthlyLimits();
       return res.status(429).json({ 
-        error: 'Daily summary limit reached',
-        code: 'DAILY_LIMIT_EXCEEDED',
+        error: 'Monthly summary limit reached',
+        code: 'MONTHLY_LIMIT_EXCEEDED',
         details: {
           limit: limits.summaries,
           used: summaryCheck.used,
@@ -179,10 +179,9 @@ router.post('/chat', auth, requireActiveSubscription, checkCostLimit, async (req
     }
 
     // Reset usage cycles if needed (and save immediately)
-    const dailyReset = user.resetDailyUsage();
-    const monthlyReset = user.resetMonthlyChatUsage();
-    if (dailyReset || monthlyReset) {
-      console.log(`🔄 Usage reset for user ${userId} - daily: ${dailyReset}, monthly: ${monthlyReset}`);
+    const wasReset = user.resetYouTubeUsage();
+    if (wasReset) {
+      console.log(`🔄 YouTube usage reset for user ${userId}`);
       await user.save();
     }
 
@@ -574,15 +573,14 @@ router.get('/usage', auth, async (req, res) => {
     }
 
     // Reset usage if needed (and save immediately)
-    const dailyReset = user.resetDailyUsage();
-    const monthlyReset = user.resetMonthlyChatUsage();
-    if (dailyReset || monthlyReset) {
-      console.log(`🔄 Usage reset for user ${userId} - daily: ${dailyReset}, monthly: ${monthlyReset}`);
+    const wasReset = user.resetYouTubeUsage();
+    if (wasReset) {
+      console.log(`🔄 YouTube usage reset for user ${userId}`);
       await user.save();
     }
     
     // Get limits and usage info
-    const limits = user.getDailyLimits();
+    const limits = user.getMonthlyLimits();
     const summaryCheck = user.canCreateSummary();
     const chatCheck = user.canUseChat();
 
@@ -604,18 +602,19 @@ router.get('/usage', auth, async (req, res) => {
       },
       usage: {
         summaries: {
-          today: user.usage.summariesToday,
+          thisMonth: user.usage.summariesThisMonth,
           remaining: summaryCheck.remaining,
-          canUse: summaryCheck.allowed
+          canUse: summaryCheck.allowed,
+          renewalDate: summaryCheck.renewalDate
         },
         chat: {
-          today: user.usage.chatQueriesToday,
+          thisMonth: user.usage.chatQueriesThisMonth,
           remaining: chatCheck.remaining,
           canUse: chatCheck.allowed,
-          renewalDate: chatCheck.renewalDate // 30-day renewal date for free users
+          renewalDate: chatCheck.renewalDate
         }
       },
-      resetTime: new Date(Date.now() + (24 * 60 * 60 * 1000)) // Tomorrow
+      renewalDate: user.usage.youtubeRenewalDate
     });
 
   } catch (error) {
@@ -636,13 +635,10 @@ router.post('/reset-usage', auth, async (req, res) => {
     }
 
     // Reset all usage counters
-    user.usage.summariesToday = 0;
-    user.usage.chatQueriesToday = 0;
     user.usage.summariesThisMonth = 0;
     user.usage.chatQueriesThisMonth = 0;
-    user.usage.chatQueriesThisCycle = 0;
-    user.usage.lastDailyReset = new Date();
     user.usage.lastResetDate = new Date();
+    user.usage.youtubeRenewalDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     
     await user.save();
     
@@ -652,10 +648,9 @@ router.post('/reset-usage', auth, async (req, res) => {
       success: true,
       message: 'Usage has been reset',
       usage: {
-        summariesToday: user.usage.summariesToday,
-        chatQueriesToday: user.usage.chatQueriesToday,
         summariesThisMonth: user.usage.summariesThisMonth,
-        chatQueriesThisMonth: user.usage.chatQueriesThisMonth
+        chatQueriesThisMonth: user.usage.chatQueriesThisMonth,
+        renewalDate: user.usage.youtubeRenewalDate
       }
     });
 
