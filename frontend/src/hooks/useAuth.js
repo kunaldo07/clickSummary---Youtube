@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
+import config from '../lib/environment';
 
 /* global chrome */
 
@@ -35,32 +36,25 @@ export const AuthProvider = ({ children }) => {
     
     console.log('✅ Website localStorage and state cleared');
     
-    // SINGLE simplified extension notification (no overwhelming operations)
+    // Notify extension of sign out
     try {
       if (typeof window !== 'undefined' && window.chrome && window.chrome.runtime) {
         console.log('📤 Notifying extension of sign out...');
-        window.chrome.runtime.sendMessage({
-          action: 'userSignedOut',
-          source: 'website_signout'
-        }, () => {
-          // Simple callback, no complex logic
-          if (window.chrome.runtime.lastError) {
-            console.log('🗜️ Extension not available');
+        window.chrome.runtime.sendMessage(
+          config.EXTENSION_ID,
+          {
+            action: 'userSignedOut',
+            source: 'website_signout'
+          }, 
+          () => {
+            if (window.chrome.runtime.lastError) {
+              console.log('Extension not available');
+            }
           }
-        });
+        );
       }
     } catch (error) {
-      console.warn('⚠️ Extension notification failed:', error);
-    }
-    
-    // SINGLE auth bridge sync (no multiple delayed calls)
-    if (typeof window !== 'undefined' && window.youTubeSummarizerAuthBridge) {
-      try {
-        console.log('🌉 Triggering auth bridge sync...');
-        window.youTubeSummarizerAuthBridge.forceSync();
-      } catch (error) {
-        console.warn('⚠️ Auth bridge sync failed:', error);
-      }
+      console.warn('Extension notification failed:', error);
     }
     
     console.log('✅ SIMPLIFIED SIGNOUT COMPLETE');
@@ -217,31 +211,52 @@ export const AuthProvider = ({ children }) => {
 
   const sendTokenToExtension = useCallback(async (token, user) => {
     try {
-      // Check if we're in a Chrome extension context
+      console.log('🔍 Checking Chrome extension API availability...');
+      
       if (typeof window !== 'undefined' && window.chrome && window.chrome.runtime && window.chrome.runtime.sendMessage) {
-        window.chrome.runtime.sendMessage({
-          action: 'storeUserToken',
-          token: token,
-          user: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            picture: user.picture,
-            role: user.role,
-            subscription: user.subscription
-          }
-        }, (response) => {
-          if (window.chrome.runtime.lastError) {
-            console.warn('Extension not available:', window.chrome.runtime.lastError.message);
-          } else if (response && response.success) {
-            console.log('Token sent to extension successfully');
-          }
+        const userData = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          picture: user.picture,
+          role: user.role,
+          subscription: user.subscription
+        };
+        
+        // Send to all configured extensions
+        const extensionIds = [
+          config.EXTENSION_ID,           // YouTube extension
+          config.REDDIT_EXTENSION_ID     // Reddit extension
+        ].filter(id => id); // Filter out empty IDs
+        
+        console.log('📤 Sending token to extensions:', extensionIds);
+        console.log('📤 Token length:', token ? token.length : 0);
+        console.log('📤 User email:', user?.email);
+        
+        extensionIds.forEach(extensionId => {
+          window.chrome.runtime.sendMessage(
+            extensionId,
+            {
+              action: 'storeUserToken',
+              token: token,
+              user: userData
+            }, 
+            (response) => {
+              if (window.chrome.runtime.lastError) {
+                console.warn(`⚠️ Extension ${extensionId} error:`, window.chrome.runtime.lastError.message);
+              } else if (response && response.success) {
+                console.log(`✅ Token sent to extension ${extensionId} successfully!`);
+              } else {
+                console.warn(`⚠️ Extension ${extensionId} response:`, response);
+              }
+            }
+          );
         });
       } else {
-        console.log('Chrome extension API not available (normal for web app)');
+        console.log('ℹ️ Chrome extension API not available (normal for regular web browser)');
       }
     } catch (error) {
-      console.warn('Could not send token to extension:', error.message);
+      console.error('❌ Could not send token to extension:', error.message);
     }
   }, []);
 
@@ -287,44 +302,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('youtube_summarizer_token', userData.backendToken);
     }
     
-    // Send token to extension if available (legacy method)
+    // Send token to extension if available
     await sendTokenToExtension(userData.backendToken, userData);
     
-    // Enhanced auth bridge sync with multiple triggers
-    console.log('🌉 Triggering enhanced auth bridge sync...');
-    
-    if (typeof window !== 'undefined') {
-      // Method 1: Direct bridge call
-      if (window.youTubeSummarizerAuthBridge) {
-        try {
-          console.log('📡 Method 1: Direct bridge sync');
-          await window.youTubeSummarizerAuthBridge.forceSync();
-        } catch (error) {
-          console.warn('⚠️ Direct bridge sync failed:', error);
-        }
-      }
-      
-      // Method 2: PostMessage trigger
-      try {
-        console.log('📡 Method 2: PostMessage trigger');
-        window.postMessage({
-          type: 'YOUTUBE_SUMMARIZER_AUTH_SYNC',
-          force: true
-        }, window.location.origin);
-      } catch (error) {
-        console.warn('⚠️ PostMessage trigger failed:', error);
-      }
-      
-      // Method 3: Delayed trigger for race conditions
-      setTimeout(() => {
-        if (window.youTubeSummarizerAuthBridge) {
-          console.log('📡 Method 3: Delayed bridge sync');
-          window.youTubeSummarizerAuthBridge.syncAuth(true);
-        }
-      }, 500);
-    }
-    
-    console.log('✅ User authenticated and sync triggered:', userData.name);
+    console.log('✅ User authenticated:', userData.name);
   }, [sendTokenToExtension]);
 
   const value = {

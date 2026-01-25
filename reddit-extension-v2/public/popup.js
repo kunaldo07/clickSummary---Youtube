@@ -106,9 +106,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
   
+  // Sync account button
+  const syncAccountBtn = document.getElementById('sync-account-btn');
+  if (syncAccountBtn) {
+    syncAccountBtn.addEventListener('click', handleSyncAccount);
+  }
+  
   // Load data
   await loadUsageData();
 });
+
+// Handle sync account - opens website to trigger auth sync
+async function handleSyncAccount() {
+  const env = await detectEnvironment();
+  const syncUrl = env.isDevelopment ? 'http://localhost:3002' : 'https://www.clicksummary.com';
+  
+  console.log('🔄 Opening sync URL:', syncUrl);
+  
+  // Open the website - the website-sync.js content script will sync the token
+  chrome.tabs.create({ url: syncUrl }, (tab) => {
+    // Listen for the tab to finish loading, then close popup and reload
+    chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+      if (tabId === tab.id && info.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(listener);
+        // Wait a bit for the sync to happen, then reload data
+        setTimeout(async () => {
+          await loadUsageData();
+        }, 2000);
+      }
+    });
+  });
+}
 
 // Load usage data
 async function loadUsageData() {

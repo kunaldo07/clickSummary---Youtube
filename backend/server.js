@@ -10,7 +10,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const mongoose = require('mongoose');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,9 +20,9 @@ const isDevelopment = !isProduction;
 
 console.log(`🌍 Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
-// Environment validation - only require JWT_SECRET for development
-const criticalEnvVars = ['JWT_SECRET'];
-const optionalEnvVars = ['MONGODB_URI', 'OPENAI_API_KEY', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET'];
+// Environment validation
+const criticalEnvVars = ['JWT_SECRET', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'];
+const optionalEnvVars = ['OPENAI_API_KEY', 'RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET'];
 
 const missingCritical = criticalEnvVars.filter(varName => !process.env[varName]);
 const missingOptional = optionalEnvVars.filter(varName => !process.env[varName]);
@@ -55,35 +54,27 @@ const getAllowedOrigins = () => {
   const origins = [];
   
   if (isDevelopment) {
-    // Development origins
     origins.push(
       'http://localhost:3000',
       'http://localhost:3002',
       'http://127.0.0.1:3000',
-      'http://127.0.0.1:3002'
-    );
-    
-    // ALSO allow production origins during development for testing
-    origins.push(
+      'http://127.0.0.1:3002',
       'https://www.clicksummary.com',
       'https://clicksummary.com'
     );
   }
   
   if (isProduction) {
-    // Production origins
     origins.push(
       'https://www.clicksummary.com',
       'https://clicksummary.com'
     );
   }
   
-  // Add custom CLIENT_URL if provided
   if (process.env.CLIENT_URL) {
     origins.push(process.env.CLIENT_URL);
   }
   
-  // Add Chrome extension origin if provided
   if (process.env.EXTENSION_ID) {
     origins.push(`chrome-extension://${process.env.EXTENSION_ID}`);
   }
@@ -107,30 +98,24 @@ console.log('🌐 Allowed CORS origins:', allowedOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     
-    // Check if origin is in allowed list
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     
-    // In development, be more permissive with Chrome extensions
     if (isDevelopment) {
-      // Allow any chrome-extension:// origin in development
       if (origin && origin.startsWith('chrome-extension://')) {
         console.log(`✅ Allowing Chrome extension origin in development: ${origin}`);
         return callback(null, true);
       }
       
-      // Allow localhost on any port in development
       if (origin && origin.match(/^https?:\/\/(localhost|127\.0\.0\.1):/)) {
         console.log(`✅ Allowing localhost origin in development: ${origin}`);
         return callback(null, true);
       }
     }
     
-    // In production, still allow Chrome extensions if they match extension ID
     if (isProduction && origin && origin.startsWith('chrome-extension://') && process.env.EXTENSION_ID) {
       const extensionOrigin = `chrome-extension://${process.env.EXTENSION_ID}`;
       if (origin === extensionOrigin) {
@@ -139,9 +124,7 @@ app.use(cors({
       }
     }
     
-    // Log rejected origins for debugging
     console.warn(`⚠️ CORS rejected origin: ${origin}`);
-    console.warn(`📋 Allowed origins:`, allowedOrigins);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -153,7 +136,7 @@ app.use(express.json({ limit: '10mb' }));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
@@ -161,32 +144,15 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Database connection - graceful fallback for development
-let mongodbConnected = false;
-if (process.env.MONGODB_URI) {
-  mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
-    mongodbConnected = true;
-    console.log('✅ Connected to MongoDB');
-    console.log(`📊 Database: ${mongoose.connection.name}`);
-  })
-  .catch(err => {
-    console.log('⚠️  MongoDB connection failed - using in-memory storage for development');
-    console.log('💡 Install MongoDB or use MongoDB Atlas for production');
-    mongodbConnected = false;
-  });
-} else {
-  console.log('⚠️  MongoDB URI not configured - using in-memory storage');
-}
+// Initialize Supabase
+const { supabaseAdmin } = require('./config/supabase');
+console.log('✅ Supabase clients initialized');
 
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/payment', require('./routes/payment'));
+// Routes - Only Supabase auth
+app.use('/api/auth', require('./routes/supabaseAuth'));
+// app.use('/api/payment', require('./routes/payment'));
 app.use('/api/summarizer', require('./routes/summarizer'));
-app.use('/api/analytics', require('./routes/analytics'));
+// app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/reddit', require('./routes/reddit'));
 
 // Health check endpoint
@@ -195,10 +161,10 @@ app.get('/api/health', (req, res) => {
     status: 'healthy', 
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    model: process.env.OPENAI_MODEL || 'gpt-5-nano',
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     caching: process.env.ENABLE_SMART_CACHING === 'true' ? 'enabled' : 'disabled',
     allowedOrigins: allowedOrigins.length,
-    mongodb: mongodbConnected ? 'connected' : 'disconnected'
+    database: 'supabase'
   });
 });
 
@@ -211,7 +177,6 @@ app.use('*', (req, res) => {
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
   
-  // Don't leak error details in production
   const isDevelopment = process.env.NODE_ENV === 'development';
   
   res.status(err.status || 500).json({ 
@@ -223,24 +188,23 @@ app.use((err, req, res, next) => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('🔄 Received SIGTERM, shutting down gracefully...');
-  await mongoose.connection.close();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  console.log('🔄 Received SIGINT, shutting down gracefully...');
-  await mongoose.connection.close();
+  console.log('�� Received SIGINT, shutting down gracefully...');
   process.exit(0);
 });
 
 app.listen(PORT, () => {
-  console.log('🚀 YouTube Summarizer Backend Server');
+  console.log('🚀 YouTube Summarizer Backend Server (Supabase)');
   console.log('=====================================');
   console.log(`🌐 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🤖 AI Model: ${process.env.OPENAI_MODEL || 'gpt-5-nano'}`);
+  console.log(`🤖 AI Model: ${process.env.OPENAI_MODEL || 'gpt-4o-mini'}`);
   console.log(`💰 Cost limit: $${process.env.MAX_MONTHLY_COST_PER_USER || '2.50'}/user/month`);
   console.log(`📊 Caching: ${process.env.ENABLE_SMART_CACHING === 'true' ? 'enabled' : 'disabled'}`);
   console.log(`🌐 CORS: ${allowedOrigins.length} allowed origins`);
+  console.log(`💾 Database: Supabase`);
   console.log('=====================================');
 });

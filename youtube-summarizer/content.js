@@ -6,7 +6,7 @@ class YouTubeSummarizer {
     this.summaryContainer = null;
     this.isProcessing = false;
     this.currentSummaryType = 'insightful'; // insightful, conversational, funny, actionable
-    this.currentFormat = 'list'; // list, q&a
+    this.currentFormat = 'list'; // list, qa
     this.currentLength = 'short'; // short, detailed
     this.transcriptData = null;
     this.commentsData = null;

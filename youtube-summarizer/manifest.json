@@ -27,15 +27,6 @@
       "js": ["content.js"],
       "css": ["styles-exact.css"],
       "run_at": "document_end"
-    },
-    {
-      "matches": [
-        "http://localhost:3002/*",
-        "https://www.clicksummary.com/*",
-        "https://clicksummary.com/*"
-      ],
-      "js": ["auth-bridge.js"],
-      "run_at": "document_end"
     }
   ],
   "background": {
@@ -50,5 +41,12 @@
     "16": "icon16.png",
     "48": "icon48.png", 
     "128": "icon128.png"
+  },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:3002/*",
+      "https://www.clicksummary.com/*",
+      "https://clicksummary.com/*"
+    ]
   }
 }

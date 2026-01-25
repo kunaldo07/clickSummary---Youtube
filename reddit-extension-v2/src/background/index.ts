@@ -75,6 +75,41 @@ chrome.runtime.onInstalled.addListener((details) => {
   console.log('🚀 AI Reddit Post Analyzer installed:', details.reason);
 });
 
+// Listen for EXTERNAL messages from website (for token sync)
+chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
+  console.log('🌐 EXTERNAL message received from website:', request.action, 'from:', sender.url);
+  
+  if (request.action === 'storeUserToken') {
+    // Store token and user info from website
+    const { token, user } = request;
+    
+    if (token && user) {
+      chrome.storage.local.set({
+        'youtube_summarizer_token': token,
+        'youtube_summarizer_user': JSON.stringify(user)
+      }, () => {
+        console.log('✅ Token stored from external website');
+        sendResponse({ success: true, message: 'Token stored successfully' });
+      });
+    } else {
+      console.warn('⚠️ Missing token or user in external message');
+      sendResponse({ success: false, error: 'Missing token or user' });
+    }
+    return true; // Keep channel open for async response
+  }
+  
+  if (request.action === 'userSignedOut') {
+    // Clear stored auth data
+    chrome.storage.local.remove(['youtube_summarizer_token', 'youtube_summarizer_user'], () => {
+      console.log('🚪 User signed out - cleared auth data (external)');
+      sendResponse({ success: true, message: 'Auth data cleared' });
+    });
+    return true;
+  }
+  
+  return false;
+});
+
 // Listen for messages from content script
 chrome.runtime.onMessage.addListener((message: ChromeMessage, sender, sendResponse) => {
   console.log('📨 Background received message:', message.action);
@@ -96,6 +131,35 @@ chrome.runtime.onMessage.addListener((message: ChromeMessage, sender, sendRespon
   if (message.action === 'getApiKey') {
     sendResponse({ success: true, data: 'configured' });
     return false;
+  }
+
+  // Handle token storage from content scripts (website-sync.js)
+  if ((message as any).action === 'storeUserToken') {
+    const { token, user } = message as any;
+    if (token && user) {
+      chrome.storage.local.set({
+        'youtube_summarizer_token': token,
+        'youtube_summarizer_user': typeof user === 'string' ? user : JSON.stringify(user)
+      }, () => {
+        console.log('✅ Token stored from content script');
+        sendResponse({ success: true });
+      });
+    } else {
+      sendResponse({ success: false, error: 'Missing token or user' });
+    }
+    return true;
+  }
+
+  // Handle auth status check
+  if ((message as any).action === 'getAuthStatus') {
+    chrome.storage.local.get(['youtube_summarizer_token', 'youtube_summarizer_user'], (result) => {
+      sendResponse({
+        success: true,
+        isAuthenticated: !!result.youtube_summarizer_token,
+        user: result.youtube_summarizer_user ? JSON.parse(result.youtube_summarizer_user) : null
+      });
+    });
+    return true;
   }
 });
 

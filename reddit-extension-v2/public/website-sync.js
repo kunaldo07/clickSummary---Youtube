@@ -1,6 +1,17 @@
 /**
- * Website Authentication Sync Script
- * Syncs authentication state from website localStorage to extension storage
+ * Website-to-Extension Auth Sync Script (Supabase Version)
+ * 
+ * This script runs on clicksummary.com domains and syncs Supabase authentication
+ * data from the website's localStorage to the extension's chrome.storage.
+ * 
+ * With Supabase, the session is automatically stored in localStorage with keys:
+ * - sb-<project-ref>-auth-token (contains access_token, refresh_token, etc.)
+ * 
+ * Flow:
+ * 1. User signs in on website via Supabase OAuth
+ * 2. Supabase stores session in localStorage automatically
+ * 3. This script detects the session and syncs to chrome.storage
+ * 4. Extension uses the Supabase access token for API calls
  */
 
 console.log('🔄 AI Reddit Post Analyzer: Website sync script loaded on:', window.location.href);
@@ -20,27 +31,85 @@ function syncAuthToExtension() {
       return;
     }
 
-    const token = localStorage.getItem('youtube_summarizer_token');
-    const user = localStorage.getItem('youtube_summarizer_user');
+    // Look for Supabase session in localStorage
+    // Supabase stores session with key pattern: sb-<project-ref>-auth-token
+    let supabaseSession = null;
+    let supabaseKey = null;
     
-    console.log('🔍 Checking localStorage:', {
-      hasToken: !!token,
-      hasUser: !!user,
-      tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
+    // Find Supabase auth key
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        supabaseKey = key;
+        const sessionData = localStorage.getItem(key);
+        if (sessionData) {
+          try {
+            supabaseSession = JSON.parse(sessionData);
+          } catch (e) {
+            console.error('Failed to parse Supabase session:', e);
+          }
+        }
+        break;
+      }
+    }
+    
+    // Also check for our custom keys (this is the primary method now)
+    const legacyToken = localStorage.getItem('youtube_summarizer_token');
+    const legacyUser = localStorage.getItem('youtube_summarizer_user');
+    
+    console.log('🔍 Reddit Extension - Checking localStorage:', {
+      hasSupabaseSession: !!supabaseSession,
+      supabaseKey: supabaseKey,
+      hasLegacyToken: !!legacyToken,
+      legacyTokenLength: legacyToken?.length,
+      hasLegacyUser: !!legacyUser
     });
     
-    if (token && user) {
-      // User is signed in - sync to extension storage
-      console.log('📤 Syncing auth to extension storage...');
+    // PRIORITY: Check legacy tokens first (this is what the frontend uses)
+    if (legacyToken && legacyUser) {
+      console.log('📤 Reddit Extension - Syncing auth from localStorage...');
+      chrome.storage.local.set({
+        youtube_summarizer_token: legacyToken,
+        youtube_summarizer_user: legacyUser
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.error('❌ Reddit Extension - Error during sync:', chrome.runtime.lastError);
+          return;
+        }
+        console.log('✅ Reddit Extension - Auth synced to extension storage!');
+        
+        // Verify it was stored
+        chrome.storage.local.get(['youtube_summarizer_token', 'youtube_summarizer_user'], (result) => {
+          console.log('✅ Reddit Extension - Verified storage:', {
+            hasToken: !!result.youtube_summarizer_token,
+            tokenLength: result.youtube_summarizer_token?.length,
+            hasUser: !!result.youtube_summarizer_user
+          });
+        });
+      });
+      return; // Done - don't continue to Supabase check
+    }
+    
+    // Fall back to Supabase session if no legacy tokens
+    if (supabaseSession?.access_token) {
+      const token = supabaseSession.access_token;
+      const user = supabaseSession.user;
+      
+      console.log('📤 Syncing Supabase auth to extension storage...');
       chrome.storage.local.set({
         youtube_summarizer_token: token,
-        youtube_summarizer_user: user
+        youtube_summarizer_user: JSON.stringify({
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.name || user.email.split('@')[0],
+          picture: user.user_metadata?.picture || user.user_metadata?.avatar_url
+        })
       }, () => {
         if (chrome.runtime.lastError) {
           console.error('❌ Error during sync:', chrome.runtime.lastError);
           return;
         }
-        console.log('✅ Auth synced to extension storage successfully!');
+        console.log('✅ Supabase auth synced to extension storage!');
         
         // Verify it was stored
         chrome.storage.local.get(['youtube_summarizer_token', 'youtube_summarizer_user'], (result) => {

@@ -137,6 +137,62 @@ let CONFIG = {
   }
 })();
 
+// Handle messages from EXTERNAL websites (localhost:3002, clicksummary.com)
+// This is required for website-to-extension communication via externally_connectable
+chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {
+  console.log('🌐 EXTERNAL message received from website:', {
+    action: request.action,
+    senderUrl: sender.url,
+    senderOrigin: sender.origin,
+    timestamp: new Date().toISOString()
+  });
+
+  if (request.action === 'storeUserToken') {
+    console.log('💾 Storing user token from website...');
+    
+    const dataToStore = {
+      youtube_summarizer_token: request.token
+    };
+    
+    if (request.user) {
+      dataToStore.youtube_summarizer_user = JSON.stringify(request.user);
+      console.log('✅ Storing user:', request.user.name, request.user.email);
+    }
+    
+    chrome.storage.local.set(dataToStore, () => {
+      if (chrome.runtime.lastError) {
+        console.error('❌ Failed to store token:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        console.log('✅ Token stored successfully from website!');
+        chrome.runtime.sendMessage({ action: 'authStatusChanged' }).catch(() => {});
+        sendResponse({ success: true });
+      }
+    });
+    return true;
+  }
+
+  if (request.action === 'userSignedOut') {
+    console.log('🚪 User signed out from website...');
+    
+    chrome.storage.local.remove(['youtube_summarizer_token', 'youtube_summarizer_user'], () => {
+      if (chrome.runtime.lastError) {
+        console.error('❌ Failed to clear token:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        console.log('✅ User data cleared from website signout');
+        chrome.runtime.sendMessage({ action: 'authStatusChanged' }).catch(() => {});
+        sendResponse({ success: true });
+      }
+    });
+    return true;
+  }
+
+  console.log('⚠️ Unknown external action:', request.action);
+  sendResponse({ success: false, error: 'Unknown action' });
+  return true;
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('📨 Message received in background script:', {
     action: request.action,
@@ -375,20 +431,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
                 func: () => {
-                  console.log('🌉 Background sync trigger from background script');
+                  console.log('🔄 Direct localStorage sync from background script');
                   
-                  if (window.youTubeSummarizerAuthBridge) {
-                    console.log('🌉 Triggering auth bridge sync from background');
-                    window.youTubeSummarizerAuthBridge.forceSync();
-                    return true;
-                  }
-                  
-                  // Fallback: direct localStorage sync
                   const token = localStorage.getItem('youtube_summarizer_token');
                   const user = localStorage.getItem('youtube_summarizer_user');
                   
                   if (token && user) {
-                    console.log('📤 Direct background sync attempt');
+                    console.log('📤 Sending auth data to extension');
                     if (typeof chrome !== 'undefined' && chrome.runtime) {
                       chrome.runtime.sendMessage({
                         action: 'syncAuthData',

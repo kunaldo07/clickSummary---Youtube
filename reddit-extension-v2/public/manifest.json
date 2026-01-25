@@ -5,13 +5,16 @@
   "description": "Instantly summarize any Reddit thread, comments, or search — then ask AI to explain, explore, and clarify",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "tabs"
   ],
   "host_permissions": [
     "https://www.reddit.com/*",
     "https://old.reddit.com/*",
     "https://clicksummary.com/*",
-    "https://www.clicksummary.com/*"
+    "https://www.clicksummary.com/*",
+    "http://localhost:3001/*",
+    "http://localhost:3002/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -54,5 +57,12 @@
     "16": "icons/reddit16.png",
     "48": "icons/reddit48.png",
     "128": "icons/reddit128.png"
+  },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:3002/*",
+      "https://clicksummary.com/*",
+      "https://www.clicksummary.com/*"
+    ]
   }
 }

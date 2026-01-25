@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../../services/apiService';
 import toast from 'react-hot-toast';
-import config from '../../lib/environment';
+import { supabase } from '../../lib/supabase';
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -180,7 +180,7 @@ const FeatureItem = styled.div`
 `;
 
 export default function SignInPageClient() {
-  const { signInWithGoogle, loading, setLoading, isAuthenticated, setAuthenticatedUser } = useAuth();
+  const { loading, setLoading, isAuthenticated, setAuthenticatedUser } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -189,53 +189,61 @@ export default function SignInPageClient() {
     }
   }, [isAuthenticated, router]);
 
-  // Handle OAuth callback
+  // Handle Supabase OAuth callback
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
-    const error = urlParams.get('error');
-    
-    if (error) {
-      console.error('OAuth error:', error);
-      toast.error('Google sign-in was cancelled or failed.');
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      return;
-    }
-    
-    if (code && state) {
-      const storedState = sessionStorage.getItem('oauth_state');
-      
-      if (state === storedState) {
-        console.log('OAuth callback received, exchanging code for token...');
-        handleOAuthCallback(code);
+    const handleAuthCallback = async () => {
+      try {
+        // Check for auth callback in URL
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        // Clean up
-        sessionStorage.removeItem('oauth_state');
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } else {
-        console.error('OAuth state mismatch');
-        toast.error('Security error during sign-in.');
+        if (error) {
+          console.error('Supabase session error:', error);
+          return;
+        }
+
+        if (session) {
+          console.log('✅ Supabase session found, exchanging with backend...');
+          await handleSupabaseSession(session);
+        }
+      } catch (error) {
+        console.error('Auth callback error:', error);
       }
-    }
+    };
+
+    handleAuthCallback();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state changed:', event);
+      
+      if (event === 'SIGNED_IN' && session) {
+        await handleSupabaseSession(session);
+      } else if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('youtube_summarizer_token');
+        localStorage.removeItem('youtube_summarizer_user');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const handleOAuthCallback = async (code) => {
+  const handleSupabaseSession = async (session) => {
     try {
       setLoading(true);
       
-      // Exchange code for token via backend using apiService
-      const response = await apiService.post('/auth/google-callback', {
-        code, 
-        redirectUri: window.location.origin + '/signin'
+      // Exchange Supabase session with backend
+      const response = await apiService.post('auth/session', {
+        access_token: session.access_token,
+        refresh_token: session.refresh_token
       });
       
       const data = response.data;
       
       if (data.success) {
-        // Store token separately
-        localStorage.setItem('youtube_summarizer_token', data.token);
+        // Store Supabase access token (used for backend API calls)
+        localStorage.setItem('youtube_summarizer_token', session.access_token);
         
         // Create user data object
         const userData = {
@@ -243,10 +251,13 @@ export default function SignInPageClient() {
           name: data.user.name,
           email: data.user.email,
           picture: data.user.picture,
-          role: data.user.role,
+          role: data.user.role || 'user',
           subscription: data.user.subscription,
-          backendToken: data.token
+          backendToken: session.access_token
         };
+        
+        // Store user data
+        localStorage.setItem('youtube_summarizer_user', JSON.stringify(userData));
         
         // Update authentication state
         await setAuthenticatedUser(userData);
@@ -258,37 +269,40 @@ export default function SignInPageClient() {
         throw new Error(data.message || 'Authentication failed');
       }
     } catch (error) {
-      console.error('OAuth callback error:', error);
+      console.error('Session exchange error:', error);
       toast.error('Sign-in failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignInClick = () => {
-    console.log('=== MANUAL OAUTH FLOW ===');
-    
-    // Google OAuth URL for manual flow
-    const clientId = config.GOOGLE_CLIENT_ID;
-    const redirectUri = encodeURIComponent(window.location.origin + '/signin');
-    const scope = encodeURIComponent('profile email');
-    const responseType = 'code';
-    const state = Math.random().toString(36).substring(2, 15);
-    
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${clientId}&` +
-      `redirect_uri=${redirectUri}&` +
-      `scope=${scope}&` +
-      `response_type=${responseType}&` +
-      `state=${state}`;
-    
-    console.log('Redirecting to Google OAuth...');
-    
-    // Store state for verification
-    sessionStorage.setItem('oauth_state', state);
-    
-    // Redirect to Google OAuth
-    window.location.href = googleAuthUrl;
+  const handleGoogleSignInClick = async () => {
+    try {
+      setLoading(true);
+      console.log('🚀 Starting Supabase Google OAuth...');
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/signin',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
+        }
+      });
+      
+      if (error) {
+        console.error('Supabase OAuth error:', error);
+        toast.error('Failed to start sign-in. Please try again.');
+        setLoading(false);
+      }
+      // If successful, browser will redirect to Google
+    } catch (error) {
+      console.error('Sign-in error:', error);
+      toast.error('Sign-in failed. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (

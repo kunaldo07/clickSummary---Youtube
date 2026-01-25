@@ -24,6 +24,22 @@ async function loadConfigFromBackground() {
 document.addEventListener('DOMContentLoaded', async () => {
   await loadConfigFromBackground();
   initializePopup();
+  
+  // Listen for auth status changes from background script
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'authStatusChanged') {
+      console.log('🔄 Auth status changed, refreshing popup...');
+      initializePopup();
+    }
+  });
+  
+  // Listen for storage changes to update popup in real-time
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && (changes.youtube_summarizer_token || changes.youtube_summarizer_user)) {
+      console.log('🔄 Storage changed, refreshing popup...');
+      initializePopup();
+    }
+  });
 });
 
 async function initializePopup() {
@@ -134,11 +150,11 @@ async function validateTokenWithBackend(token) {
     console.log('🎫 Token length:', token?.length);
     
     const response = await fetch(`${BACKEND_URL}/auth/verify`, {
-      method: 'POST',
+      method: 'GET',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ token })
+      }
     });
     
     console.log('📡 Validation response status:', response.status);
@@ -196,15 +212,8 @@ async function attemptWebAppSync() {
         const syncResult = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
-            console.log('🌉 Comprehensive sync attempt from popup');
+            console.log('🔄 Direct localStorage sync from popup');
             
-            // Strategy A: Use auth bridge if available
-            if (window.youTubeSummarizerAuthBridge) {
-              console.log('🌉 Using auth bridge forceSync');
-              window.youTubeSummarizerAuthBridge.forceSync();
-            }
-            
-            // Strategy B: Direct localStorage check and manual sync
             const token = localStorage.getItem('youtube_summarizer_token');
             const user = localStorage.getItem('youtube_summarizer_user');
             

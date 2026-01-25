@@ -19,7 +19,8 @@ const getConfig = () => {
       API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
       WEBSITE_URL: process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002',
       GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '837073239595-d82jmt90dcg6pg1suilajc7rl2auf2b8.apps.googleusercontent.com',
-      EXTENSION_ID: process.env.NEXT_PUBLIC_EXTENSION_ID || 'cijajcbmplbiidgaeooocnfhjhcahnil',
+      EXTENSION_ID: process.env.NEXT_PUBLIC_EXTENSION_ID || 'jmeinjphjbddicojmhiefaaokdipadjl',
+      REDDIT_EXTENSION_ID: process.env.NEXT_PUBLIC_REDDIT_EXTENSION_ID || '', // Set after loading Reddit extension
       DEBUG: true,
       ENVIRONMENT: 'development'
     };
@@ -29,6 +30,7 @@ const getConfig = () => {
       WEBSITE_URL: process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://clicksummary.com',
       GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '837073239595-d82jmt90dcg6pg1suilajc7rl2auf2b8.apps.googleusercontent.com',
       EXTENSION_ID: process.env.NEXT_PUBLIC_EXTENSION_ID || 'cijajcbmplbiidgaeooocnfhjhcahnil',
+      REDDIT_EXTENSION_ID: process.env.NEXT_PUBLIC_REDDIT_EXTENSION_ID || '', // Set after publishing Reddit extension
       DEBUG: false,
       ENVIRONMENT: 'production'
     };
