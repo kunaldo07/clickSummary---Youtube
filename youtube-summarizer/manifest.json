@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ClickSummary: AI YouTube Summarizer",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Summarize YouTube videos instantly with AI. Get transcripts, key insights, and highlights in one click.",
   "author": "ClickSummary Team",
   "homepage_url": "https://www.clicksummary.com",
