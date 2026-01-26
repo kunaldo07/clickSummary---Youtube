@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Reddit Post Analyzer",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Instantly summarize any Reddit thread, comments, or search — then ask AI to explain, explore, and clarify",
   "permissions": [
     "storage",
