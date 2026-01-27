@@ -79,6 +79,14 @@ const getAllowedOrigins = () => {
     origins.push(`chrome-extension://${process.env.EXTENSION_ID}`);
   }
   
+  if (process.env.YOUTUBE_EXTENSION_ID) {
+    origins.push(`chrome-extension://${process.env.YOUTUBE_EXTENSION_ID}`);
+  }
+  
+  if (process.env.REDDIT_EXTENSION_ID) {
+    origins.push(`chrome-extension://${process.env.REDDIT_EXTENSION_ID}`);
+  }
+  
   return origins.filter(Boolean);
 };
 
@@ -116,9 +124,14 @@ app.use(cors({
       }
     }
     
-    if (isProduction && origin && origin.startsWith('chrome-extension://') && process.env.EXTENSION_ID) {
-      const extensionOrigin = `chrome-extension://${process.env.EXTENSION_ID}`;
-      if (origin === extensionOrigin) {
+    if (isProduction && origin && origin.startsWith('chrome-extension://')) {
+      const allowedExtensions = [
+        process.env.EXTENSION_ID,
+        process.env.YOUTUBE_EXTENSION_ID,
+        process.env.REDDIT_EXTENSION_ID
+      ].filter(Boolean).map(id => `chrome-extension://${id}`);
+      
+      if (allowedExtensions.includes(origin)) {
         console.log(`✅ Allowing production Chrome extension: ${origin}`);
         return callback(null, true);
       }
