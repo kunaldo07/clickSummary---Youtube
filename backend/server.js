@@ -124,18 +124,32 @@ app.use(cors({
       }
     }
     
-    if (isProduction && origin && origin.startsWith('chrome-extension://')) {
-      const allowedExtensions = [
-        process.env.EXTENSION_ID,
-        process.env.YOUTUBE_EXTENSION_ID,
-        process.env.REDDIT_EXTENSION_ID
-      ].filter(Boolean).map(id => `chrome-extension://${id}`);
-      
-      if (allowedExtensions.includes(origin)) {
-        console.log(`✅ Allowing production Chrome extension: ${origin}`);
+    if (isProduction) {
+      // Allow requests with no origin (extensions, server-to-server, curl, etc.)
+      if (!origin) {
+        console.log(`✅ Allowing request with no origin`);
         return callback(null, true);
       }
+
+      // Handle Chrome extensions safely
+      if (origin.startsWith('chrome-extension://')) {
+        const cleanOrigin = origin.replace(/\/$/, '');
+
+        const allowedExtensions = [
+          process.env.EXTENSION_ID,
+          process.env.YOUTUBE_EXTENSION_ID,
+          process.env.REDDIT_EXTENSION_ID
+        ]
+          .filter(Boolean)
+          .map(id => `chrome-extension://${id}`);
+
+        if (allowedExtensions.includes(cleanOrigin)) {
+          console.log(`✅ Allowing production Chrome extension: ${cleanOrigin}`);
+          return callback(null, true);
+        }
+      }
     }
+
     
     console.warn(`⚠️ CORS rejected origin: ${origin}`);
     callback(new Error('Not allowed by CORS'));
