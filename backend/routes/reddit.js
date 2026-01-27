@@ -69,45 +69,40 @@ router.get('/usage', authenticateSupabase, async (req, res) => {
     const userId = req.user.id;
     console.log(`📊 Getting Reddit usage for user: ${userId}`);
 
-    // Get user's subscription and usage data
-    const user = await SupabaseUser.getOrCreateUser(req.user);
+    const user = await SupabaseUser.findById(userId);
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const subscription = user.subscription || {};
-    const usage = user.usage || {};
-    const planType = subscription.planType || 'free';
-    const isPro = planType === 'monthly' || planType === 'yearly';
+    const isPro = user.subscription_plan === 'monthly' && 
+                  user.subscription_status === 'active';
 
-    // Get limits based on plan
     const limits = isPro ? {
-      summariesPerMonth: -1, // unlimited
-      chatQueriesPerMonth: -1 // unlimited
+      summariesPerMonth: -1,
+      chatQueriesPerMonth: -1
     } : {
       summariesPerMonth: 50,
       chatQueriesPerMonth: 30
     };
 
-    // Calculate renewal date (first of next month)
     const now = new Date();
     const renewalDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
     res.json({
       success: true,
-      planType,
+      planType: user.subscription_plan || 'free',
       usage: {
         summaries: {
-          used: usage.summariesThisMonth || 0,
+          used: user.summaries_this_month || 0,
           limit: limits.summariesPerMonth,
-          remaining: limits.summariesPerMonth === -1 ? -1 : Math.max(0, limits.summariesPerMonth - (usage.summariesThisMonth || 0)),
+          remaining: limits.summariesPerMonth === -1 ? -1 : Math.max(0, limits.summariesPerMonth - (user.summaries_this_month || 0)),
           renewalDate: renewalDate.toISOString()
         },
         chats: {
-          used: usage.chatQueriesThisMonth || 0,
+          used: user.chat_queries_this_month || 0,
           limit: limits.chatQueriesPerMonth,
-          remaining: limits.chatQueriesPerMonth === -1 ? -1 : Math.max(0, limits.chatQueriesPerMonth - (usage.chatQueriesThisMonth || 0)),
+          remaining: limits.chatQueriesPerMonth === -1 ? -1 : Math.max(0, limits.chatQueriesPerMonth - (user.chat_queries_this_month || 0)),
           renewalDate: renewalDate.toISOString()
         }
       }
