@@ -4,11 +4,121 @@
  */
 
 const express = require('express');
-const { supabaseAdmin } = require('../config/supabase');
+const { supabaseAdmin, supabaseAnon } = require('../config/supabase');
 const { authenticateSupabase } = require('../middleware/supabaseAuth');
 const SupabaseUser = require('../models/SupabaseUser');
 
 const router = express.Router();
+
+router.post('/google-callback', async (req, res) => {
+  try {
+    const { code, redirectUri } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ success: false, message: 'Authorization code required' });
+    }
+
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.status(500).json({ success: false, message: 'OAuth not properly configured' });
+    }
+
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        code: code,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri
+      })
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (!tokenResponse.ok || tokenData.error) {
+      return res.status(400).json({
+        success: false,
+        message: tokenData.error_description || tokenData.error || 'Token exchange failed'
+      });
+    }
+
+    const idToken = tokenData.id_token;
+
+    if (!idToken) {
+      return res.status(400).json({ success: false, message: 'Missing id_token from Google token exchange' });
+    }
+
+    const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithIdToken({
+      provider: 'google',
+      token: idToken
+    });
+
+    if (signInError || !signInData?.session?.access_token) {
+      return res.status(401).json({
+        success: false,
+        message: signInError?.message || 'Failed to authenticate with Supabase'
+      });
+    }
+
+    const accessToken = signInData.session.access_token;
+    const refreshToken = signInData.session.refresh_token;
+
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(accessToken);
+
+    if (userError || !user) {
+      return res.status(401).json({
+        success: false,
+        message: userError?.message || 'Invalid session'
+      });
+    }
+
+    let profile = await SupabaseUser.findById(user.id);
+
+    if (!profile) {
+      profile = await SupabaseUser.create({
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.name || user.user_metadata?.full_name || user.email.split('@')[0],
+        picture: user.user_metadata?.picture || user.user_metadata?.avatar_url,
+        google_id: user.user_metadata?.provider_id || user.id,
+        last_login_at: new Date().toISOString()
+      });
+    } else {
+      await SupabaseUser.update(user.id, {
+        last_login_at: new Date().toISOString()
+      });
+    }
+
+    return res.json({
+      success: true,
+      token: accessToken,
+      user: {
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        picture: profile.picture,
+        role: profile.role || 'user',
+        subscription: {
+          plan: profile.subscription_plan,
+          status: profile.subscription_status
+        }
+      },
+      session: {
+        access_token: accessToken,
+        refresh_token: refreshToken
+      }
+    });
+  } catch (error) {
+    console.error('❌ Google callback error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Authentication failed'
+    });
+  }
+});
 
 /**
  * Exchange Supabase session for user data
