@@ -319,6 +319,91 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch(error => sendResponse({ error: error.message }));
       return true;
     }
+    
+    if (request.action === 'initiateGoogleSignIn') {
+      console.log('🔐 Handling Google sign-in from content script');
+      
+      // Get OAuth config from manifest
+      const manifest = chrome.runtime.getManifest();
+      const clientId = manifest.oauth2.client_id;
+      const scopes = manifest.oauth2.scopes.join(' ');
+      const redirectUri = chrome.identity.getRedirectURL();
+      
+      console.log('📋 Redirect URI:', redirectUri);
+      
+      // Build Google OAuth URL with account picker
+      const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      authUrl.searchParams.set('client_id', clientId);
+      authUrl.searchParams.set('response_type', 'token');
+      authUrl.searchParams.set('redirect_uri', redirectUri);
+      authUrl.searchParams.set('scope', scopes);
+      authUrl.searchParams.set('prompt', 'select_account');
+      
+      // Launch OAuth flow
+      chrome.identity.launchWebAuthFlow(
+        { url: authUrl.toString(), interactive: true },
+        async (responseUrl) => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ OAuth error:', chrome.runtime.lastError);
+            sendResponse({ success: false, error: chrome.runtime.lastError.message });
+            return;
+          }
+          
+          if (!responseUrl) {
+            console.log('ℹ️ Sign-in cancelled');
+            sendResponse({ success: false, error: 'Sign-in cancelled' });
+            return;
+          }
+          
+          try {
+            // Extract access token
+            const url = new URL(responseUrl);
+            const hashParams = new URLSearchParams(url.hash.substring(1));
+            const token = hashParams.get('access_token');
+            
+            if (!token) {
+              sendResponse({ success: false, error: 'No access token received' });
+              return;
+            }
+            
+            console.log('✅ Got Google token, exchanging with backend...');
+            
+            // Exchange with backend
+            const response = await fetch(`${CONFIG.API_BASE_URL}/auth/extension/google`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ access_token: token })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Backend auth failed: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.success || !data.token || !data.user) {
+              throw new Error('Invalid response from backend');
+            }
+            
+            console.log('✅ Backend authentication successful');
+            
+            // Store auth data
+            await chrome.storage.local.set({
+              youtube_summarizer_token: data.token,
+              youtube_summarizer_user: JSON.stringify(data.user)
+            });
+            
+            console.log('✅ Auth data stored');
+            sendResponse({ success: true, user: data.user });
+            
+          } catch (error) {
+            console.error('❌ Sign-in error:', error);
+            sendResponse({ success: false, error: error.message });
+          }
+        }
+      );
+      return true;
+    }
 
     if (request.action === 'storeUserToken') {
       console.log('💾 Storing user token and data from landing page...');

@@ -121,6 +121,90 @@ router.post('/google-callback', async (req, res) => {
 });
 
 /**
+ * Extension-native Google OAuth token exchange
+ * Chrome extension uses chrome.identity to get Google token, then exchanges it here
+ */
+router.post('/extension/google', async (req, res) => {
+  try {
+    const { access_token } = req.body;
+
+    if (!access_token) {
+      return res.status(400).json({ error: 'Google access token required' });
+    }
+
+    // Get user info from Google
+    const googleResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${access_token}`
+      }
+    });
+
+    if (!googleResponse.ok) {
+      return res.status(401).json({ error: 'Invalid Google token' });
+    }
+
+    const googleUser = await googleResponse.json();
+
+    // Find or create user in our database by email
+    let profile = await SupabaseUser.findByEmail(googleUser.email);
+
+    if (!profile) {
+      // Create new user with Supabase-generated UUID
+      const { v4: uuidv4 } = require('uuid');
+      profile = await SupabaseUser.create({
+        email: googleUser.email,
+        name: googleUser.name,
+        picture: googleUser.picture,
+        google_id: googleUser.id,
+        last_login_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+      console.log('✅ New extension user registered:', googleUser.email);
+    } else {
+      // Update existing user
+      await SupabaseUser.update(profile.id, {
+        last_login_at: new Date().toISOString(),
+        picture: googleUser.picture,
+        name: googleUser.name
+      });
+      console.log('✅ Extension user logged in:', googleUser.email);
+    }
+
+    // Generate a simple JWT or use the Google token as session identifier
+    // For now, we'll use the profile ID as the token (you should use proper JWT)
+    const sessionToken = Buffer.from(JSON.stringify({
+      userId: profile.id,
+      email: profile.email,
+      timestamp: Date.now()
+    })).toString('base64');
+
+    res.json({
+      success: true,
+      token: sessionToken,
+      user: {
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        picture: profile.picture,
+        role: profile.role || 'user',
+        subscription: {
+          plan: profile.subscription_plan || 'free',
+          status: profile.subscription_status || 'active'
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Extension Google auth error:', error);
+    res.status(500).json({ 
+      error: 'Authentication failed',
+      message: error.message 
+    });
+  }
+});
+
+/**
  * Exchange Supabase session for user data
  * Frontend will handle OAuth flow, then send session to backend
  */

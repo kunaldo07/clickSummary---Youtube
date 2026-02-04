@@ -22,22 +22,47 @@ async function authenticateSupabase(req, res, next) {
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify token with Supabase
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    let userId = null;
+    let isExtensionToken = false;
 
-    if (error || !user) {
-      console.error('❌ Token verification failed:', error?.message);
-      return res.status(401).json({ 
-        error: 'Invalid or expired token',
-        message: 'Please sign in again'
-      });
+    // Try to decode as extension token first (base64-encoded JSON)
+    try {
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
+      if (decoded.userId && decoded.email && decoded.timestamp) {
+        // Validate token age (24 hours max)
+        const tokenAge = Date.now() - decoded.timestamp;
+        if (tokenAge < 24 * 60 * 60 * 1000) {
+          userId = decoded.userId;
+          isExtensionToken = true;
+          console.log('✅ Extension token validated for user:', decoded.email);
+        } else {
+          console.warn('⚠️ Extension token expired');
+        }
+      }
+    } catch (decodeError) {
+      // Not an extension token, try Supabase JWT
+    }
+
+    // If not extension token, verify with Supabase
+    if (!isExtensionToken) {
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+      if (error || !user) {
+        console.error('❌ Token verification failed:', error?.message);
+        return res.status(401).json({ 
+          error: 'Invalid or expired token',
+          message: 'Please sign in again'
+        });
+      }
+
+      userId = user.id;
     }
 
     // Get user profile from database
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('users')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     if (profileError) {
@@ -48,28 +73,14 @@ async function authenticateSupabase(req, res, next) {
     }
 
     if (!profile) {
-      // User exists in auth but not in users table - create profile
-      const { data: newProfile, error: createError } = await supabaseAdmin
-        .from('users')
-        .insert({
-          id: user.id,
-          email: user.email,
-          name: user.user_metadata?.name || user.email.split('@')[0],
-          picture: user.user_metadata?.picture || user.user_metadata?.avatar_url,
-          google_id: user.user_metadata?.provider_id
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        console.error('❌ Error creating user profile:', createError);
-        return res.status(500).json({ error: 'Failed to create user profile' });
-      }
-
-      req.user = newProfile;
-    } else {
-      req.user = profile;
+      console.error('❌ User profile not found for ID:', userId);
+      return res.status(404).json({ 
+        error: 'User profile not found',
+        message: 'Please sign in again'
+      });
     }
+
+    req.user = profile;
 
     // Update last active timestamp
     await supabaseAdmin
@@ -78,7 +89,7 @@ async function authenticateSupabase(req, res, next) {
         last_active_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      .eq('id', user.id);
+      .eq('id', userId);
 
     next();
   } catch (error) {

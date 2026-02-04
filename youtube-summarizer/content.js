@@ -2900,15 +2900,39 @@ ${content}
 
   async initiateSignIn() {
     try {
-      console.log('🔐 Initiating Google sign-in...');
+      console.log('🔐 Initiating Google sign-in with account picker...');
       
-      // For now, redirect to landing page for sign-in
-      // In a full implementation, you'd integrate Google Identity Services here
-      this.openLandingPage();
+      // Show loading state
+      this.showAuthMessage('Opening Google sign-in...');
+      
+      // Send message to background script to handle OAuth
+      chrome.runtime.sendMessage({ action: 'initiateGoogleSignIn' }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('❌ Sign-in error:', chrome.runtime.lastError);
+          this.showAuthError('Sign-in failed. Please try again.');
+          return;
+        }
+        
+        if (response && response.success) {
+          console.log('✅ Sign-in successful, refreshing auth state...');
+          this.showAuthMessage('Sign-in successful! Loading...');
+          // Refresh the authentication state
+          setTimeout(() => {
+            this.checkAuthentication();
+          }, 500);
+        } else {
+          console.error('❌ Sign-in failed:', response?.error);
+          if (response?.error === 'Sign-in cancelled') {
+            this.showSignInPrompt(); // Show sign-in prompt again
+          } else {
+            this.showAuthError(response?.error || 'Sign-in failed. Please try again.');
+          }
+        }
+      });
       
     } catch (error) {
       console.error('❌ Sign-in failed:', error);
-      this.showAuthError('Sign-in failed. Please try again or use the landing page.');
+      this.showAuthError('Sign-in failed. Please try again.');
     }
   }
 

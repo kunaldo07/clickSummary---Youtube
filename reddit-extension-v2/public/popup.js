@@ -106,36 +106,136 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
   
-  // Sync account button
-  const syncAccountBtn = document.getElementById('sync-account-btn');
-  if (syncAccountBtn) {
-    syncAccountBtn.addEventListener('click', handleSyncAccount);
+  // Sign in button
+  const signInBtn = document.getElementById('sign-in-btn');
+  if (signInBtn) {
+    signInBtn.addEventListener('click', handleGoogleSignIn);
   }
   
   // Load data
   await loadUsageData();
 });
 
-// Handle sync account - opens website to trigger auth sync
-async function handleSyncAccount() {
-  const env = await detectEnvironment();
-  const syncUrl = env.isDevelopment ? 'http://localhost:3002' : 'https://www.clicksummary.com';
+// Prevent multiple sign-in attempts
+let isSigningIn = false;
+
+// Handle Google sign-in with account picker
+async function handleGoogleSignIn() {
+  if (isSigningIn) {
+    console.log('⚠️ Sign-in already in progress');
+    return;
+  }
   
-  console.log('🔄 Opening sync URL:', syncUrl);
+  isSigningIn = true;
+  const signInBtn = document.getElementById('sign-in-btn');
+  const signInStatus = document.getElementById('sign-in-status');
   
-  // Open the website - the website-sync.js content script will sync the token
-  chrome.tabs.create({ url: syncUrl }, (tab) => {
-    // Listen for the tab to finish loading, then close popup and reload
-    chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-      if (tabId === tab.id && info.status === 'complete') {
-        chrome.tabs.onUpdated.removeListener(listener);
-        // Wait a bit for the sync to happen, then reload data
-        setTimeout(async () => {
+  if (signInBtn) signInBtn.disabled = true;
+  if (signInStatus) signInStatus.textContent = '🔄 Opening Google sign-in...';
+  
+  try {
+    console.log('🔐 Starting Google OAuth with account picker...');
+    
+    // Get OAuth config from manifest
+    const manifest = chrome.runtime.getManifest();
+    const clientId = manifest.oauth2.client_id;
+    const scopes = manifest.oauth2.scopes.join(' ');
+    
+    // Get redirect URI
+    const redirectUri = chrome.identity.getRedirectURL();
+    console.log('� Redirect URI:', redirectUri);
+    
+    // Build OAuth URL with account picker
+    const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    authUrl.searchParams.set('client_id', clientId);
+    authUrl.searchParams.set('response_type', 'token');
+    authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('scope', scopes);
+    authUrl.searchParams.set('prompt', 'select_account');
+    
+    // Launch OAuth flow
+    chrome.identity.launchWebAuthFlow(
+      { url: authUrl.toString(), interactive: true },
+      async (responseUrl) => {
+        if (chrome.runtime.lastError) {
+          console.error('❌ OAuth error:', chrome.runtime.lastError);
+          if (signInStatus) signInStatus.textContent = '❌ Sign-in failed. Please try again.';
+          isSigningIn = false;
+          if (signInBtn) signInBtn.disabled = false;
+          return;
+        }
+        
+        if (!responseUrl) {
+          console.log('ℹ️ Sign-in cancelled');
+          if (signInStatus) signInStatus.textContent = 'Sign-in cancelled';
+          isSigningIn = false;
+          if (signInBtn) signInBtn.disabled = false;
+          return;
+        }
+        
+        try {
+          // Extract access token
+          const url = new URL(responseUrl);
+          const hashParams = new URLSearchParams(url.hash.substring(1));
+          const token = hashParams.get('access_token');
+          
+          if (!token) {
+            console.error('❌ No access token in response');
+            if (signInStatus) signInStatus.textContent = '❌ Sign-in failed. Please try again.';
+            isSigningIn = false;
+            if (signInBtn) signInBtn.disabled = false;
+            return;
+          }
+          
+          console.log('✅ Got Google token, exchanging with backend...');
+          if (signInStatus) signInStatus.textContent = '🔄 Completing sign-in...';
+          
+          // Get API URL
+          const API_BASE_URL = await getAPIBaseURL();
+          
+          // Exchange with backend
+          const response = await fetch(`${API_BASE_URL}/auth/extension/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_token: token })
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Backend auth failed: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (!data.success || !data.token || !data.user) {
+            throw new Error('Invalid response from backend');
+          }
+          
+          console.log('✅ Sign-in successful:', data.user.email);
+          
+          // Store auth data
+          await chrome.storage.local.set({
+            youtube_summarizer_token: data.token,
+            youtube_summarizer_user: JSON.stringify(data.user)
+          });
+          
+          // Reload to show authenticated view
           await loadUsageData();
-        }, 2000);
+          
+        } catch (error) {
+          console.error('❌ Sign-in error:', error);
+          if (signInStatus) signInStatus.textContent = '❌ ' + (error.message || 'Sign-in failed');
+          isSigningIn = false;
+          if (signInBtn) signInBtn.disabled = false;
+        }
       }
-    });
-  });
+    );
+    
+  } catch (error) {
+    console.error('❌ Sign-in error:', error);
+    if (signInStatus) signInStatus.textContent = '❌ Sign-in failed. Please try again.';
+    isSigningIn = false;
+    if (signInBtn) signInBtn.disabled = false;
+  }
 }
 
 // Load usage data

@@ -24,22 +24,6 @@ async function loadConfigFromBackground() {
 document.addEventListener('DOMContentLoaded', async () => {
   await loadConfigFromBackground();
   initializePopup();
-  
-  // Listen for auth status changes from background script
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'authStatusChanged') {
-      console.log('🔄 Auth status changed, refreshing popup...');
-      initializePopup();
-    }
-  });
-  
-  // Listen for storage changes to update popup in real-time
-  chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local' && (changes.youtube_summarizer_token || changes.youtube_summarizer_user)) {
-      console.log('🔄 Storage changed, refreshing popup...');
-      initializePopup();
-    }
-  });
 });
 
 async function initializePopup() {
@@ -132,9 +116,10 @@ async function checkAuthenticationStatus() {
     }
     
     console.log('📭 No authentication data found in extension storage');
+    updateSyncStatus('Please sign in to continue');
     
-    // Strategy 2: Aggressive multi-attempt sync from web app
-    return await attemptWebAppSync();
+    // No auto-sync - user must explicitly click sign-in button
+    return null;
     
   } catch (error) {
     console.error('❌ Error checking authentication:', error);
@@ -149,20 +134,18 @@ async function validateTokenWithBackend(token) {
     console.log('🔗 Backend URL:', BACKEND_URL);
     console.log('🎫 Token length:', token?.length);
     
-    const response = await fetch(`${BACKEND_URL}/auth/verify`, {
+    const response = await fetch(`${BACKEND_URL}/auth/me`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${token}`
       }
     });
     
     console.log('📡 Validation response status:', response.status);
     
     if (response.ok) {
-      const data = await response.json();
-      console.log('✅ Token validation response:', data);
-      return data.valid === true;
+      console.log('✅ Token validation response: OK');
+      return true;
     } else if (response.status === 401 || response.status === 403) {
       console.warn('⚠️ Token validation failed: Unauthorized');
       return false;
@@ -212,8 +195,15 @@ async function attemptWebAppSync() {
         const syncResult = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
-            console.log('🔄 Direct localStorage sync from popup');
+            console.log('🌉 Comprehensive sync attempt from popup');
             
+            // Strategy A: Use auth bridge if available
+            if (window.youTubeSummarizerAuthBridge) {
+              console.log('🌉 Using auth bridge forceSync');
+              window.youTubeSummarizerAuthBridge.forceSync();
+            }
+            
+            // Strategy B: Direct localStorage check and manual sync
             const token = localStorage.getItem('youtube_summarizer_token');
             const user = localStorage.getItem('youtube_summarizer_user');
             
@@ -353,6 +343,8 @@ function showView(viewId) {
   }
 }
 
+let isSigningIn = false; // Prevent multiple sign-in attempts
+
 function setupNotAuthenticatedHandlers() {
   console.log('🔧 Setting up not-authenticated handlers...');
   
@@ -365,34 +357,133 @@ function setupNotAuthenticatedHandlers() {
   
   console.log('✅ Sign-in button found, attaching handler');
   
-  signInBtn.addEventListener('click', (e) => {
-    console.log('🔐 Sign-in button clicked!');
+  signInBtn.addEventListener('click', async (e) => {
+    console.log('🔐 Sign-in button clicked - starting Google OAuth with account picker');
     e.preventDefault();
     
+    // Prevent multiple clicks
+    if (isSigningIn) {
+      console.log('⚠️ Sign-in already in progress, ignoring click');
+      return;
+    }
+    isSigningIn = true;
+    signInBtn.disabled = true;
+    
     try {
-      if (!chrome || !chrome.tabs) {
-        console.error('❌ Chrome tabs API not available');
-        return;
-      }
+      updateSyncStatus('🔄 Opening Google sign-in...');
       
-      const url = `${WEBSITE_URL}/signin`;
-      console.log('🌐 Opening URL:', url);
+      // Get OAuth config from manifest
+      const manifest = chrome.runtime.getManifest();
+      const clientId = manifest.oauth2.client_id;
+      const scopes = manifest.oauth2.scopes.join(' ');
       
-      chrome.tabs.create({ url }, (tab) => {
-        if (chrome.runtime.lastError) {
-          console.error('❌ Error creating tab:', chrome.runtime.lastError);
-        } else {
-          console.log('✅ Tab created successfully:', tab?.id);
-          window.close();
+      // Get the redirect URI for this extension
+      const redirectUri = chrome.identity.getRedirectURL();
+      console.log('📋 Redirect URI (add this to Google Cloud Console):', redirectUri);
+      
+      // Build Google OAuth URL with prompt=select_account to force account picker
+      const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      authUrl.searchParams.set('client_id', clientId);
+      authUrl.searchParams.set('response_type', 'token');
+      authUrl.searchParams.set('redirect_uri', redirectUri);
+      authUrl.searchParams.set('scope', scopes);
+      authUrl.searchParams.set('prompt', 'select_account');
+      
+      console.log('🔗 Opening OAuth URL...');
+      
+      // Launch web auth flow - opens Google account selection page
+      chrome.identity.launchWebAuthFlow(
+        { url: authUrl.toString(), interactive: true },
+        async (responseUrl) => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ OAuth error:', chrome.runtime.lastError);
+            console.error('💡 If you see "invalid request", add this redirect URI to Google Cloud Console:');
+            console.error('   ' + redirectUri);
+            updateSyncStatus('❌ Sign-in failed. Check console for setup instructions.');
+            isSigningIn = false;
+            signInBtn.disabled = false;
+            return;
+          }
+          
+          if (!responseUrl) {
+            console.log('ℹ️ Sign-in cancelled by user');
+            updateSyncStatus('Sign-in cancelled');
+            isSigningIn = false;
+            signInBtn.disabled = false;
+            return;
+          }
+          
+          // Extract access token from response URL hash
+          try {
+            const url = new URL(responseUrl);
+            const hashParams = new URLSearchParams(url.hash.substring(1));
+            const token = hashParams.get('access_token');
+            
+            if (!token) {
+              console.error('❌ No access token in response');
+              updateSyncStatus('❌ Sign-in failed. Please try again.');
+              isSigningIn = false;
+              signInBtn.disabled = false;
+              return;
+            }
+            
+            console.log('✅ Got Google token, exchanging with backend...');
+            updateSyncStatus('🔄 Completing sign-in...');
+            
+            // Exchange Google token with backend
+            const response = await fetch(`${BACKEND_URL}/auth/extension/google`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ access_token: token })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Backend auth failed: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.success || !data.token || !data.user) {
+              throw new Error('Invalid response from backend');
+            }
+            
+            console.log('✅ Backend authentication successful');
+            
+            // Store auth data
+            await chrome.storage.local.set({
+              youtube_summarizer_token: data.token,
+              youtube_summarizer_user: JSON.stringify(data.user)
+            });
+            
+            console.log('✅ Auth data stored, showing authenticated view');
+            updateSyncStatus('✅ Signed in successfully!');
+            
+            // Show authenticated view
+            await showAuthenticatedView({
+              token: data.token,
+              user: data.user
+            });
+            
+          } catch (parseError) {
+            console.error('❌ Error processing auth response:', parseError);
+            updateSyncStatus('❌ Authentication failed. Please try again.');
+            isSigningIn = false;
+            signInBtn.disabled = false;
+          }
         }
-      });
+      );
+      
     } catch (error) {
-      console.error('❌ Error in sign-in button handler:', error);
+      console.error('❌ Sign-in error:', error);
+      updateSyncStatus('❌ Sign-in failed. Please try again.');
+      isSigningIn = false;
+      signInBtn.disabled = false;
     }
   });
-  
-  console.log('✅ Not-authenticated handlers setup complete');
 }
+
 
 async function showAuthenticatedView(authData) {
   const { user, token } = authData;
