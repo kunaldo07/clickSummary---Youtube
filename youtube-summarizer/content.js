@@ -36,6 +36,18 @@ class YouTubeSummarizer {
   startMonitoring() {
     console.log('👁️ Starting YouTube navigation monitoring...');
     
+    // Strategy 0: YouTube's native navigation event (most reliable for SPA)
+    window.addEventListener('yt-navigate-finish', () => {
+      console.log('🔍 yt-navigate-finish event detected');
+      this.onPageChange();
+    });
+    
+    // Also listen for yt-page-data-updated as backup
+    window.addEventListener('yt-page-data-updated', () => {
+      console.log('🔍 yt-page-data-updated event detected');
+      setTimeout(() => this.onPageChange(), 500);
+    });
+    
     // Strategy 1: MutationObserver for DOM changes
     let lastUrl = location.href;
     const observer = new MutationObserver(() => {
@@ -1160,9 +1172,19 @@ class YouTubeSummarizer {
                          document.querySelector('#columns #secondary');
     
     if (!secondaryInfo) {
-      console.log('❌ Could not find secondary info container');
+      console.log('❌ Could not find secondary info container, retrying in 500ms...');
+      // Retry up to 10 times (5 seconds total) for YouTube to load the video page layout
+      if (!this.containerRetryCount) this.containerRetryCount = 0;
+      this.containerRetryCount++;
+      if (this.containerRetryCount < 10) {
+        setTimeout(() => this.createSummaryContainer(), 500);
+      } else {
+        console.error('❌ Failed to find secondary container after 10 attempts');
+        this.containerRetryCount = 0;
+      }
       return;
     }
+    this.containerRetryCount = 0;
     
     console.log('✅ Found secondary info container, creating summary container...');
 

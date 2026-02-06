@@ -1,6 +1,9 @@
 import React from 'react';
 import SignInPageClient from './SignInPageClient';
 
+// Prevent static generation - this page requires runtime environment variables
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Sign In - Access Your AI Video Summaries',
   description: 'Sign in to ClickSummary to access your AI-powered video summaries, premium features, and personalized dashboard.',
