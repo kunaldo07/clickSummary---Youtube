@@ -22,9 +22,6 @@
   },
   "host_permissions": [
     "https://www.youtube.com/*",
-    "https://api.openai.com/*",
-    "http://localhost:3001/*",
-    "http://localhost:3002/*",
     "https://api.clicksummary.com/*",
     "https://www.clicksummary.com/*",
     "https://clicksummary.com/*"
