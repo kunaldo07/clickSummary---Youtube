@@ -17,7 +17,7 @@ const openai = new OpenAI({
 
 const CONFIG = {
   PRIMARY_MODEL: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-  MAX_TOKENS: 1000,
+  MAX_TOKENS: 1500,
   COST_PER_1K_INPUT: 0.00015,
   COST_PER_1K_OUTPUT: 0.0006
 };
@@ -151,17 +151,51 @@ router.post('/analyze', authenticateSupabase, requireActiveSubscription, checkCo
 
     const formattedContent = formatThreadContent(threadContent);
     
-    const systemPrompt = `You are an expert Reddit analyst. Analyze the following Reddit thread and return a JSON object with this exact structure:
+    const systemPrompt = `You are an expert Reddit analyst.
+Your job is to extract the real substance of a Reddit thread—not just the original post, but the actual discussion.
+
+CRITICAL RULES:
+- Avoid generic, motivational, or vague summaries
+- Focus on specific claims, numbers, arguments, and disagreements
+- Write in a clear, neutral, premium tone
+- Be concrete: mention products, numbers, timelines, specific outcomes
+- Avoid phrases like "This highlights the importance of…" or "This shows how…"
+
+Return a JSON object with this exact structure:
 
 {
-  "summary": "A concise 2-3 sentence overview of what this thread is about",
-  "keyPoints": ["Key point 1", "Key point 2", "Key point 3"],
-  "insights": "Community sentiment and different perspectives in the discussion",
-  "practicalValue": "What practical value or actionable information can be gained",
-  "bottomLine": "One sentence bottom line takeaway"
+  "threadSummary": "Short paragraph: Who posted, what the thread is about, why it matters. Be concrete with products, numbers, timelines, specific outcomes.",
+  "keyPoints": [
+    "Specific detail with numbers, events, or concrete claims",
+    "Another specific point (avoid vague advice or life lessons)",
+    "4-6 total points with real substance"
+  ],
+  "communitySentiment": {
+    "supportive": "What positive reactions people had, specific viewpoints mentioned",
+    "skeptical": "Major doubts, criticisms, or accusations raised",
+    "neutral": "Clarifications, corrections, or factual discussion (optional)"
+  },
+  "notableComments": [
+    {
+      "type": "main_insight",
+      "summary": "One-sentence summary of what the commenter said",
+      "quote": "Short relevant quote if useful"
+    },
+    {
+      "type": "criticism",
+      "summary": "Summary of a strong criticism",
+      "quote": "Relevant quote"
+    }
+  ],
+  "practicalTakeaways": [
+    "Actionable lesson or concrete strategy",
+    "Real-world insight (no motivational language)",
+    "3 total bullet points"
+  ],
+  "bottomLine": "One sentence answering: What's the real conclusion of this thread? Be specific and grounded."
 }
 
-Be objective, informative, and capture the essence of the discussion. Return ONLY valid JSON, no markdown or extra text.${language && language !== 'en' ? ` Respond in ${language}.` : ''}`;
+Return ONLY valid JSON, no markdown or extra text.${language && language !== 'en' ? ` Respond in ${language}.` : ''}`;
 
     const completion = await openai.chat.completions.create({
       model: model || CONFIG.PRIMARY_MODEL,
@@ -187,10 +221,11 @@ Be objective, informative, and capture the essence of the discussion. Return ONL
       console.error('Failed to parse JSON response:', rawContent);
       // Fallback to structured object with raw content
       analysis = {
-        summary: rawContent,
+        threadSummary: rawContent,
         keyPoints: [],
-        insights: '',
-        practicalValue: '',
+        communitySentiment: { supportive: '', skeptical: '', neutral: '' },
+        notableComments: [],
+        practicalTakeaways: [],
         bottomLine: ''
       };
     }

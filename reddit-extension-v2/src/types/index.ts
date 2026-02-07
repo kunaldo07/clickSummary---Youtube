@@ -17,12 +17,30 @@ export interface RedditThread {
 }
 
 // Types for AI responses
-export interface ThreadSummary {
+export interface NotableComment {
+  type: 'main_insight' | 'criticism' | 'advice';
   summary: string;
+  quote?: string;
+}
+
+export interface CommunitySentiment {
+  supportive: string;
+  skeptical: string;
+  neutral?: string;
+}
+
+export interface ThreadSummary {
+  // New structure
+  threadSummary?: string;
   keyPoints: string[];
-  insights: string;
-  practicalValue?: string;
+  communitySentiment?: CommunitySentiment;
+  notableComments?: NotableComment[];
+  practicalTakeaways?: string[];
   bottomLine?: string;
+  // Legacy fields for backwards compatibility
+  summary?: string;
+  insights?: string;
+  practicalValue?: string;
 }
 
 export interface ChatMessage {
