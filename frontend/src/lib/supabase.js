@@ -4,29 +4,24 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Use placeholder values during build time to prevent errors
+// The actual values will be used at runtime in the browser
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 
-// Create a dummy client for build time, real client for runtime
-const createSupabaseClient = () => {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('⚠️ Supabase environment variables not available (build time)');
-    // Return a mock client for build time to prevent errors
-    return null;
+const isBuildTime = !process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined
   }
-  
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined
-    }
-  });
-};
+});
 
-export const supabase = createSupabaseClient();
-
-if (supabase) {
+if (!isBuildTime) {
   console.log('✅ Supabase client initialized');
+} else {
+  console.warn('⚠️ Supabase using placeholder config (build time)');
 }
